@@ -5,10 +5,10 @@ MPICC=mpic++
 CPU_FLAGS=-pedantic -Wall -Wextra -O3 -std=c++0x -I./Random123/include/
 
 # please set this to your cuda path
-ifeq ($(wildcard /net/nfs/opt/cuda/bin/nvcc),) 
+ifeq ($(wildcard /net/nfs/opt/cuda-8.0/bin/nvcc),) 
   NVCC=nvcc
 else
-  NVCC=/net/nfs/opt/cuda/bin/nvcc
+  NVCC=/net/nfs/opt/cuda-8.0/bin/nvcc
 endif
 GPU_ARCHS=-arch=sm_35 -rdc=true -I./Random123/include/ -lineinfo
 GPU_FLAGS=-Xcompiler -Wall,-Wno-unused-function,-O3
