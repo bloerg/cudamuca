@@ -38,6 +38,12 @@ typedef r123::Philox4x32_R<7> RNG;
 
 //~ using namespace std;
 
+
+__kernel void ising() {
+
+
+}
+
 //~ // calculate bin index from energy E
 //~ __device__ inline unsigned EBIN(int E)
 //~ {

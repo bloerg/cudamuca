@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <iomanip>
 #include <cstdlib>
 #include <cstdio>
@@ -56,7 +57,7 @@ int main(int argc, char** argv)
       exit(1);
   }
   cl::Platform default_platform=all_platforms[0];
-  std::cout << "Using platform: "<<default_platform.getInfo<CL_PLATFORM_NAME>()<<"\n";
+  std::cout << "\nUsing platform: "<<default_platform.getInfo<CL_PLATFORM_NAME>()<<"\n";
 
   std::vector<cl::Device> all_devices;
   default_platform.getDevices(CL_DEVICE_TYPE_GPU, &all_devices); 
@@ -78,11 +79,36 @@ int main(int argc, char** argv)
   std::cout << "Using device: " << device.getInfo<CL_DEVICE_NAME>() << "\n";
 
   
-  //~ cudaGetDeviceCount(&deviceCount);
-  //~ if(REQUESTED_GPU >= 0 and REQUESTED_GPU < deviceCount) cudaSetDevice(REQUESTED_GPU);
+  cl::Context context({device});
 
+  // read the kernel from source file
+  std::ifstream ising_kernel_file("ising2D_cl.cl");
+  std::string ising_kernel_string(
+      std::istreambuf_iterator<char>(ising_kernel_file),
+      (std::istreambuf_iterator<char>())
+  );
+
+  //see http://github.khronos.org/OpenCL-CLHPP/
+  std::vector<std::string> program_strings {ising_kernel_string};
+  
+  cl::Program ising_program(context, ising_kernel_string, true);
+  
+  if (ising_program.build({ device }) != CL_SUCCESS){
+      std::cout << " Error building: " << ising_program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device) << "\n";
+      getchar();
+      exit(1);
+  }
+
+  cl::CommandQueue queue(context, device);
+  cl::Kernel ising_kernel(ising_program, "ising");
+  
+  queue.enqueueNDRangeKernel(ising_kernel, cl::NDRange(0), cl::NDRange(10), cl::NDRange(1));
+  
+
+    
   //~ // prefer cache over shared memory
   //~ cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
+
 
   //~ // figure out optimal execution configuration
   //~ // based on GPU architecture and generation
@@ -96,10 +122,12 @@ int main(int argc, char** argv)
     //~ NUM_WORKERS = optimum_number_of_workers;
   //~ }
  
+ 
   //~ // copy constants to GPU
   //~ cudaMemcpyToSymbol(d_N, &N, sizeof(unsigned));
   //~ cudaMemcpyToSymbol(d_L, &L, sizeof(unsigned));
   //~ cudaMemcpyToSymbol(d_NUM_WORKERS, &NUM_WORKERS, sizeof(unsigned));
+
 
   //~ // initialize NUM_WORKERS (LxL) lattices
   //~ RNG rng;
