@@ -16,6 +16,12 @@ GPU_FLAGS=-Xcompiler -Wall,-Wno-unused-function,-O3
 # opencl path
 export CPLUS_INCLUDE_PATH=/net/nfs/opt/opencl/1.2/include
 export LIBRARY_PATH=/net/nfs/opt/opencl/1.2/include
+ifeq ($(CONFIG),debug)
+	OPT =-O0 -g
+else
+	OPT =
+endif
+
 
 all: gpu cpu
 
@@ -30,7 +36,7 @@ ising2D_cpu: ising2D.cpp
 	$(MPICC) $(CPU_FLAGS) ising2D.cpp -o $@
 
 ising2D_cl: ising2D_cl.cpp
-	g++ -lOpenCL  -std=gnu++0x $(OPT) ising2D_cl.cpp  -o $@
+	g++ $(GPU_FLAGS) -lOpenCL $(OPT) ising2D_cl.cpp  -o $@
 	
 
 clean:
