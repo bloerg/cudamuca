@@ -48,7 +48,36 @@ int main(int argc, char** argv)
   }
 
   // select device
-  int deviceCount;
+
+  std::vector<cl::Platform> all_platforms;
+  cl::Platform::get(&all_platforms);
+  if (all_platforms.size() == 0) {
+      std::cout << "No platforms found. Check OpenCL installation!\n";
+      exit(1);
+  }
+  cl::Platform default_platform=all_platforms[0];
+  std::cout << "Using platform: "<<default_platform.getInfo<CL_PLATFORM_NAME>()<<"\n";
+
+  std::vector<cl::Device> all_devices;
+  default_platform.getDevices(CL_DEVICE_TYPE_GPU, &all_devices); 
+  int deviceCount = all_devices.size();
+  if (deviceCount == 0) {
+      std::cout << "No devices found. Check OpenCL installation!\n";
+      exit(1);
+  }
+
+
+  if(REQUESTED_GPU >= 0 and REQUESTED_GPU < deviceCount)
+  {
+    cl::Device device = all_devices[REQUESTED_GPU];
+  }
+  else 
+  {
+    cl::Device device = all_devices[0];
+  }
+  std::cout << "Using device: " << device.getInfo<CL_DEVICE_NAME>() << "\n";
+
+  
   //~ cudaGetDeviceCount(&deviceCount);
   //~ if(REQUESTED_GPU >= 0 and REQUESTED_GPU < deviceCount) cudaSetDevice(REQUESTED_GPU);
 
