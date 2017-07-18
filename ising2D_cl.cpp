@@ -66,14 +66,14 @@ int main(int argc, char** argv)
       exit(1);
   }
 
-
+  cl::Device device;
   if(REQUESTED_GPU >= 0 and REQUESTED_GPU < deviceCount)
   {
-    cl::Device device = all_devices[REQUESTED_GPU];
+    device = all_devices[REQUESTED_GPU];
   }
   else 
   {
-    cl::Device device = all_devices[0];
+    device = all_devices[0];
   }
   std::cout << "Using device: " << device.getInfo<CL_DEVICE_NAME>() << "\n";
 
