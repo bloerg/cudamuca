@@ -15,7 +15,7 @@ GPU_FLAGS=-Xcompiler -Wall,-Wno-unused-function,-O3
 
 # opencl path
 export CPLUS_INCLUDE_PATH=/net/nfs/opt/opencl/1.2/include
-export LIBRARY_PATH=/net/nfs/opt/opencl/1.2/include
+export LIBRARY_PATH=/net/nfs/opt/opencl/1.2:$LIBRARY_PATH
 ifeq ($(CONFIG),debug)
 	OPT =-O0 -g
 else
