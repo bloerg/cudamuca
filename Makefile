@@ -36,7 +36,7 @@ ising2D_cpu: ising2D.cpp
 	$(MPICC) $(CPU_FLAGS) ising2D.cpp -o $@
 
 ising2D_cl: ising2D_cl.cpp
-	g++ $(GPU_FLAGS) -lOpenCL $(OPT) ising2D_cl.cpp  -o $@
+	g++ $(CPU_FLAGS) -lOpenCL $(OPT) ising2D_cl.cpp  -o $@
 	
 
 clean:
