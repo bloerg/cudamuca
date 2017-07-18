@@ -56,7 +56,7 @@ int main(int argc, char** argv)
       std::cout << "No platforms found. Check OpenCL installation!\n";
       exit(1);
   }
-  cl::Platform default_platform=all_platforms[0];
+  cl::Platform default_platform=all_platforms[1];
   std::cout << "\nUsing platform: "<<default_platform.getInfo<CL_PLATFORM_NAME>()<<"\n";
 
   std::vector<cl::Device> all_devices;
@@ -88,9 +88,7 @@ int main(int argc, char** argv)
       (std::istreambuf_iterator<char>())
   );
 
-  //see http://github.khronos.org/OpenCL-CLHPP/
-  std::vector<std::string> program_strings {ising_kernel_string};
-  
+ 
   cl::Program ising_program(context, ising_kernel_string, true);
   
   if (ising_program.build({ device }) != CL_SUCCESS){
