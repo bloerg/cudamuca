@@ -117,14 +117,14 @@ int main(int argc, char** argv)
   cl::CommandQueue queue(context, device);
   cl::Kernel ising_kernel(ising_program, "ising");
   
+  // copy constants to GPU
+  ising_kernel.setArg(0, &N);
+  ising_kernel.setArg(1, &L);
+  ising_kernel.setArg(2, &NUM_WORKERS);
+
+  
   queue.enqueueNDRangeKernel(ising_kernel, cl::NDRange(0), cl::NDRange(10), cl::NDRange(1));
   
-
-
-  //~ // copy constants to GPU
-  //~ cudaMemcpyToSymbol(d_N, &N, sizeof(unsigned));
-  //~ cudaMemcpyToSymbol(d_L, &L, sizeof(unsigned));
-  //~ cudaMemcpyToSymbol(d_NUM_WORKERS, &NUM_WORKERS, sizeof(unsigned));
 
 
   //~ // initialize NUM_WORKERS (LxL) lattices

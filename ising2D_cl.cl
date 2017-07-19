@@ -39,7 +39,11 @@
 //~ using namespace std;
 
 
-__kernel void ising() {
+__kernel void ising(
+    __global uint* d_N,
+    __global uint* d_L,
+    __global uint* d_NUM_WORKERS
+) {
 
 
 }
