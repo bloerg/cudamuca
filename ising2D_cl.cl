@@ -81,6 +81,23 @@ int calculateEnergy(char* lattice, uint d_L, uint d_N, uint d_NUM_WORKERS)
   return (sum >> 1); 
 }
 
+// multicanonical Markov chain update (single spin flip)
+inline bool mucaUpdate(float rannum, int* energy, char* d_lattice, unsigned idx, uint d_L, uint d_N)
+{
+  // precalculate energy difference
+  int dE = -2 * localE(idx, d_lattice);
+
+  // flip with propability W(E_new)/W(E_old)
+  // weights are stored in texture memory for faster random access
+  if (rannum < expf(tex1Dfetch(t_log_weights, EBIN(*energy + dE, d_N)) - tex1Dfetch(t_log_weights, EBIN(*energy, d_N)))) {
+    d_lattice[idx * d_NUM_WORKERS + WORKER] = -d_lattice[idx * d_NUM_WORKERS + WORKER];
+    *energy += dE;
+    return true;
+  }
+  return false;
+}
+
+
 __kernel void ising(
     __global uint* d_N,
     __global uint* d_L,
@@ -95,21 +112,7 @@ __kernel void ising(
 
 
 
-//~ // multicanonical Markov chain update (single spin flip)
-//~ __device__ __forceinline__ bool mucaUpdate(float rannum, int* energy, int8_t* d_lattice, unsigned idx)
-//~ {
-  //~ // precalculate energy difference
-  //~ int dE = -2 * localE(idx, d_lattice);
 
-  //~ // flip with propability W(E_new)/W(E_old)
-  //~ // weights are stored in texture memory for faster random access
-  //~ if (rannum < expf(tex1Dfetch(t_log_weights, EBIN(*energy + dE)) - tex1Dfetch(t_log_weights, EBIN(*energy)))) {
-    //~ d_lattice[idx * d_NUM_WORKERS + WORKER] = -d_lattice[idx * d_NUM_WORKERS + WORKER];
-    //~ *energy += dE;
-    //~ return true;
-  //~ }
-  //~ return false;
-//~ }
 
 //~ // initial calculation of total energy per worker 
 //~ __global__ void
