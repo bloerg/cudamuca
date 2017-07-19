@@ -39,11 +39,11 @@
 //~ using namespace std;
 
 
-//~ // calculate bin index from energy E
-//~ inline unsigned EBIN(int E)
-//~ {
-  //~ return (E + (d_N << 1)) >> 2;
-//~ }
+// calculate bin index from energy E
+inline unsigned EBIN(int E)
+{
+  return (E + (d_N << 1)) >> 2;
+}
 
 //~ // calculate energy difference of one spin flip
 //~ __forceinline__ int localE(unsigned idx, int8_t* lattice)
