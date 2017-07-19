@@ -16,8 +16,8 @@
 
 #include <errno.h>
 
-// choose random number generator
-//~ typedef r123::Philox4x32_R<7> RNG;
+//~ // choose random number generator
+typedef r123::Philox4x32_R<7> RNG;
 
 // This includes my_uint64 type
 #include "ising2D_io.hpp"
@@ -127,23 +127,23 @@ int main(int argc, char** argv)
   
 
 
-  //~ // initialize NUM_WORKERS (LxL) lattices
-  //~ RNG rng;
-  //~ vector<int8_t> h_lattice(NUM_WORKERS * N);
-  //~ int8_t* d_lattice;
+  // initialize NUM_WORKERS (LxL) lattices
+  RNG rng;
+  vector<int8_t> h_lattice(NUM_WORKERS * N);
+  int8_t* d_lattice;
   //~ cudaMalloc((void**)&d_lattice, NUM_WORKERS * N * sizeof(int8_t));
-  //~ for (unsigned worker=0; worker < NUM_WORKERS; worker++) {
-    //~ RNG::key_type k = {{worker, 0xdecafbad}};
-    //~ RNG::ctr_type c = {{0, seed, 0xBADCAB1E, 0xBADC0DED}};
-    //~ RNG::ctr_type r;
-    //~ for (size_t i = 0; i < N; i++) {
-      //~ if (i%4 == 0) {
-        //~ ++c[0];
-        //~ r = rng(c, k);
-      //~ }
-      //~ h_lattice.at(i*NUM_WORKERS+worker) = 2*(r123::u01fixedpt<float>(r.v[i%4]) < 0.5)-1;
-    //~ }
-  //~ }
+  for (unsigned worker=0; worker < NUM_WORKERS; worker++) {
+    RNG::key_type k = {{worker, 0xdecafbad}};
+    RNG::ctr_type c = {{0, seed, 0xBADCAB1E, 0xBADC0DED}};
+    RNG::ctr_type r;
+    for (size_t i = 0; i < N; i++) {
+      if (i%4 == 0) {
+        ++c[0];
+        r = rng(c, k);
+      }
+      h_lattice.at(i*NUM_WORKERS+worker) = 2*(r123::u01fixedpt<float>(r.v[i%4]) < 0.5)-1;
+    }
+  }
   //~ cudaMemcpy(d_lattice, h_lattice.data(), NUM_WORKERS * N * sizeof(int8_t), cudaMemcpyHostToDevice);
 
   //~ // initialize all energies
