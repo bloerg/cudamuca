@@ -49,7 +49,8 @@ inline unsigned EBIN(int E, uint d_N)
 inline int localE(unsigned idx, uint* lattice, uint d_L, uint d_N, uint d_NUM_WORKERS)
 { 
   int right = idx + 1;
-  int left = static_cast<int>(idx) - 1;
+  //~ int left = static_cast<int>(idx) - 1;
+  int left = convert_int( idx ) -1; 
   int up = idx + d_L;
   int down = static_cast<int>(idx) - d_L;
   
