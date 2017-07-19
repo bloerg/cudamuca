@@ -52,12 +52,14 @@ inline int localE(unsigned idx, uint* lattice, uint d_L, uint d_N, uint d_NUM_WO
   //~ int left = static_cast<int>(idx) - 1;
   int left = convert_int( idx ) -1; 
   int up = idx + d_L;
-  int down = static_cast<int>(idx) - d_L;
+  //~ int down = static_cast<int>(idx) - d_L;
+  int down = convert_int( idx ) - d_L;
   
   // check periodic boundary conditions
   if (right % d_L == 0) right -= d_L;
   if (idx % d_L == 0) left += d_L;
-  if (up > static_cast<int>(d_N - 1) ) up -= d_N;
+  //~ if (up > static_cast<int>(d_N - 1) ) up -= d_N;
+  if (up > convert_int(d_N - 1) ) up -= d_N;
   if (down < 0 ) down += d_N;
    
    return -lattice[idx * d_NUM_WORKERS + WORKER] *
