@@ -21,7 +21,7 @@
 // 256 threads per block ensures the possibility of full occupancy
 // for all compute capabilities if thread count small enough
 #define WORKERS_PER_BLOCK 256
-#define WORKER (blockIdx.x * blockDim.x + threadIdx.x)
+#define WORKER get_global_id(0)
 
 // launch bounds depend on compute capability
 //~ #if __CUDA_ARCH__ >= 300

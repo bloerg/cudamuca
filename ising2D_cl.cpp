@@ -22,10 +22,10 @@ typedef r123::Philox4x32_R<7> RNG;
 // This includes my_uint64 type
 #include "ising2D_io.hpp"
 
-// 256 threads per block ensures the possibility of full occupancy
-// for all compute capabilities if thread count small enough
+//~ // 256 threads per block ensures the possibility of full occupancy
+//~ // for all compute capabilities if thread count small enough
 #define WORKERS_PER_BLOCK 256
-#define WORKER (blockIdx.x * blockDim.x + threadIdx.x)
+//~ #define WORKER (blockIdx.x * blockDim.x + threadIdx.x)
 
 // launch bounds depend on compute capability
 #if __CUDA_ARCH__ >= 300
