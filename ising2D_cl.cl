@@ -39,57 +39,66 @@
 //~ using namespace std;
 
 
+// structure for passing around configuration constants
+typedef struct ConfigParams
+{
+    uint d_L;
+    uint d_N;
+    uint d_NUM_WORKERS;
+} ConfigParams;
+
+
 // calculate bin index from energy E
-inline unsigned EBIN(int E, uint d_N)
+inline unsigned EBIN(int E, ConfigParams configuration)
 {
   return (E + (d_N << 1)) >> 2;
 }
 
 // calculate energy difference of one spin flip
-inline int localE(unsigned idx, char* lattice, uint d_L, uint d_N, uint d_NUM_WORKERS)
+inline int localE(unsigned idx, char* lattice, ConfigParams configuration)
 { 
   int right = idx + 1;
   //~ int left = static_cast<int>(idx) - 1;
   int left = convert_int( idx ) -1; 
-  int up = idx + d_L;
+  int up = idx + configuration->d_L;
   //~ int down = static_cast<int>(idx) - d_L;
-  int down = convert_int( idx ) - d_L;
+  int down = convert_int( idx ) - configuration->d_L;
   
   // check periodic boundary conditions
-  if (right % d_L == 0) right -= d_L;
-  if (idx % d_L == 0) left += d_L;
+  if (right % configuration->d_L == 0) right -= configuration->d_L;
+  if (idx % configuration->d_L == 0) left += configuration->d_L;
   //~ if (up > static_cast<int>(d_N - 1) ) up -= d_N;
-  if (up > convert_int(d_N - 1) ) up -= d_N;
-  if (down < 0 ) down += d_N;
+  if (up > convert_int(configuration->d_N - 1) ) up -= configuration->d_N;
+  if (down < 0 ) down += configuration->d_N;
    
-   return -lattice[idx * d_NUM_WORKERS + WORKER] *
-     ( lattice[right * d_NUM_WORKERS + WORKER] +
-       lattice[left * d_NUM_WORKERS + WORKER] +
-       lattice[up * d_NUM_WORKERS + WORKER] + 
-       lattice[down * d_NUM_WORKERS + WORKER] );
+   return -lattice[idx * configuration->d_NUM_WORKERS + WORKER] *
+     ( lattice[right * configuration->d_NUM_WORKERS + WORKER] +
+       lattice[left * configuration->d_NUM_WORKERS + WORKER] +
+       lattice[up * configuration->d_NUM_WORKERS + WORKER] + 
+       lattice[down * configuration->d_NUM_WORKERS + WORKER] );
 }
 
 // calculate total energy
-int calculateEnergy(char* lattice, uint d_L, uint d_N, uint d_NUM_WORKERS)
+int calculateEnergy(char* lattice, ConfigParams configuration)
 {
   int sum = 0;
 
-  for (size_t i = 0; i < d_N; i++) {
-    sum += localE(i, lattice, d_L, d_N, d_NUM_WORKERS);
+  for (size_t i = 0; i < configuration->d_N; i++) {
+    sum += localE(i, lattice, configuration);
   }
   // divide out double counting
   return (sum >> 1); 
 }
 
 // multicanonical Markov chain update (single spin flip)
-inline bool mucaUpdate(float rannum, int* energy, char* d_lattice, unsigned idx, uint d_L, uint d_N, uint d_NUM_WORKERS)
+inline bool mucaUpdate(float rannum, int* energy, char* d_lattice, unsigned idx, ConfigParams configuration)
 {
   // precalculate energy difference
-  int dE = -2 * localE(idx, d_lattice, d_L, d_N, d_NUM_WORKERS);
+  int dE = -2 * localE(idx, d_lattice, configuration);
 
   // flip with propability W(E_new)/W(E_old)
   // weights are stored in texture memory for faster random access
-  if (rannum < expf(tex1Dfetch(t_log_weights, EBIN(*energy + dE, d_N)) - tex1Dfetch(t_log_weights, EBIN(*energy, d_N)))) {
+  if (rannum < expf(tex1Dfetch(t_log_weights, EBIN(*energy + dE, configuration)) - tex1Dfetch(t_log_weights, EBIN(*energy, configuration)))) {
     d_lattice[idx * d_NUM_WORKERS + WORKER] = -d_lattice[idx * d_NUM_WORKERS + WORKER];
     *energy += dE;
     return true;
@@ -99,9 +108,9 @@ inline bool mucaUpdate(float rannum, int* energy, char* d_lattice, unsigned idx,
 
 
 __kernel void ising(
-    __global uint* d_N,
-    __global uint* d_L,
-    __global uint* d_NUM_WORKERS
+    __constant uint* d_N,
+    __constant uint* d_L,
+    __constant uint* d_NUM_WORKERS
 ) {
 
 
