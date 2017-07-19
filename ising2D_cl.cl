@@ -46,7 +46,7 @@ inline unsigned EBIN(int E, uint d_N)
 }
 
 // calculate energy difference of one spin flip
-inline int localE(unsigned idx, int8_t* lattice, uint d_L, uint d_N, uint d_NUM_WORKERS)
+inline int localE(unsigned idx, uint* lattice, uint d_L, uint d_N, uint d_NUM_WORKERS)
 { 
   int right = idx + 1;
   int left = static_cast<int>(idx) - 1;
