@@ -51,7 +51,7 @@ typedef struct ConfigParams
 // calculate bin index from energy E
 inline unsigned EBIN(int E, struct ConfigParams* configuration)
 {
-  return (E + (d_N << 1)) >> 2;
+  return (E + (configuration->d_N << 1)) >> 2;
 }
 
 // calculate energy difference of one spin flip
