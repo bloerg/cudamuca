@@ -40,7 +40,7 @@
 
 
 // calculate bin index from energy E
-inline unsigned EBIN(int E)
+inline unsigned EBIN(int E, d_N)
 {
   return (E + (d_N << 1)) >> 2;
 }
