@@ -79,6 +79,9 @@ int main(int argc, char** argv)
   std::cout << "Using device: " << device.getInfo<CL_DEVICE_NAME>() << "\n";
 
 
+  //~ // prefer cache over shared memory
+  //~ cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
+
   // figure out optimal execution configuration
   // based on GPU architecture and generation
   int maxresidentthreads = device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
@@ -90,8 +93,6 @@ int main(int argc, char** argv)
 
   std::cout << "GPU capabilities\nCL_DEVICE_MAX_WORK_GROUP_SIZE: " << maxresidentthreads << "\nCL_DEVICE_MAX_COMPUTE_UNITS: " << totalmultiprocessors << "\n";
   
-  
-
   
   cl::Context context({device});
 
@@ -111,30 +112,15 @@ int main(int argc, char** argv)
       exit(1);
   }
 
+  std::cout << "N: " << N << " L: " << L << "\n";
+
   cl::CommandQueue queue(context, device);
   cl::Kernel ising_kernel(ising_program, "ising");
   
   queue.enqueueNDRangeKernel(ising_kernel, cl::NDRange(0), cl::NDRange(10), cl::NDRange(1));
   
 
-    
-  //~ // prefer cache over shared memory
-  //~ cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
 
-
-  //~ // figure out optimal execution configuration
-  //~ // based on GPU architecture and generation
-  //~ int currentDevice;
-  //~ cudaGetDevice(&currentDevice);
-  //~ int maxresidentthreads, totalmultiprocessors;
-  //~ cudaDeviceGetAttribute(&maxresidentthreads, cudaDevAttrMaxThreadsPerMultiProcessor, currentDevice);
-  //~ cudaDeviceGetAttribute(&totalmultiprocessors, cudaDevAttrMultiProcessorCount, currentDevice);
-  //~ int optimum_number_of_workers = maxresidentthreads*totalmultiprocessors;
-  //~ if (NUM_WORKERS == 0) {
-    //~ NUM_WORKERS = optimum_number_of_workers;
-  //~ }
- 
- 
   //~ // copy constants to GPU
   //~ cudaMemcpyToSymbol(d_N, &N, sizeof(unsigned));
   //~ cudaMemcpyToSymbol(d_L, &L, sizeof(unsigned));
