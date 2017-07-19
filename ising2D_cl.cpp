@@ -78,6 +78,20 @@ int main(int argc, char** argv)
   }
   std::cout << "Using device: " << device.getInfo<CL_DEVICE_NAME>() << "\n";
 
+
+  // figure out optimal execution configuration
+  // based on GPU architecture and generation
+  int maxresidentthreads, totalmultiprocessors;
+  cl::GetDeviceInfo(device, CL_DEVICE_MAX_WORK_GROUP_SIZE, maxresidentthreads);
+  cl::GetDeviceInfo(device, CL_DEVICE_MAX_COMPUTE_UNITS, totalmultiprocessors);
+  
+  //~ cudaDeviceGetAttribute(&maxresidentthreads, cudaDevAttrMaxThreadsPerMultiProcessor, currentDevice);
+  //~ cudaDeviceGetAttribute(&totalmultiprocessors, cudaDevAttrMultiProcessorCount, currentDevice);
+  //~ int optimum_number_of_workers = maxresidentthreads*totalmultiprocessors;
+  //~ if (NUM_WORKERS == 0) {
+    //~ NUM_WORKERS = optimum_number_of_workers;
+  //~ }
+
   
   cl::Context context({device});
 
