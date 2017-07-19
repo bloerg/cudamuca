@@ -82,10 +82,10 @@ int calculateEnergy(char* lattice, uint d_L, uint d_N, uint d_NUM_WORKERS)
 }
 
 // multicanonical Markov chain update (single spin flip)
-inline bool mucaUpdate(float rannum, int* energy, char* d_lattice, unsigned idx, uint d_L, uint d_N)
+inline bool mucaUpdate(float rannum, int* energy, char* d_lattice, unsigned idx, uint d_L, uint d_N, uint d_NUM_WORKERS)
 {
   // precalculate energy difference
-  int dE = -2 * localE(idx, d_lattice);
+  int dE = -2 * localE(idx, d_lattice, d_L, d_N, d_NUM_WORKERS);
 
   // flip with propability W(E_new)/W(E_old)
   // weights are stored in texture memory for faster random access
