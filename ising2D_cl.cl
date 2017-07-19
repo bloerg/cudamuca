@@ -69,6 +69,17 @@ inline int localE(unsigned idx, uint* lattice, uint d_L, uint d_N, uint d_NUM_WO
        lattice[down * d_NUM_WORKERS + WORKER] );
 }
 
+// calculate total energy
+int calculateEnergy(int8_t* lattice, d_N)
+{
+  int sum = 0;
+
+  for (size_t i = 0; i < d_N; i++) {
+    sum += localE(i, lattice);
+  }
+  // divide out double counting
+  return (sum >> 1); 
+}
 
 __kernel void ising(
     __global uint* d_N,
@@ -82,17 +93,7 @@ __kernel void ising(
 
 
 
-//~ // calculate total energy
-//~ __device__ int calculateEnergy(int8_t* lattice)
-//~ {
-  //~ int sum = 0;
 
-  //~ for (size_t i = 0; i < d_N; i++) {
-    //~ sum += localE(i, lattice);
-  //~ }
-  //~ // divide out double counting
-  //~ return (sum >> 1); 
-//~ }
 
 //~ // multicanonical Markov chain update (single spin flip)
 //~ __device__ __forceinline__ bool mucaUpdate(float rannum, int* energy, int8_t* d_lattice, unsigned idx)
