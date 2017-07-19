@@ -70,12 +70,12 @@ inline int localE(unsigned idx, char* lattice, uint d_L, uint d_N, uint d_NUM_WO
 }
 
 // calculate total energy
-int calculateEnergy(char* lattice, uint d_N)
+int calculateEnergy(char* lattice, uint d_L, uint d_N, uint d_NUM_WORKERS)
 {
   int sum = 0;
 
   for (size_t i = 0; i < d_N; i++) {
-    sum += localE(i, lattice);
+    sum += localE(i, lattice, d_L, d_N, d_NUM_WORKERS);
   }
   // divide out double counting
   return (sum >> 1); 
