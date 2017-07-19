@@ -99,7 +99,7 @@ inline bool mucaUpdate(float rannum, int* energy, char* d_lattice, unsigned idx,
   // flip with propability W(E_new)/W(E_old)
   // weights are stored in texture memory for faster random access
   if (rannum < expf(tex1Dfetch(t_log_weights, EBIN(*energy + dE, configuration)) - tex1Dfetch(t_log_weights, EBIN(*energy, configuration)))) {
-    d_lattice[idx * d_NUM_WORKERS + WORKER] = -d_lattice[idx * d_NUM_WORKERS + WORKER];
+    d_lattice[idx * configuration->d_NUM_WORKERS + WORKER] = -d_lattice[idx * configuration->d_NUM_WORKERS + WORKER];
     *energy += dE;
     return true;
   }
