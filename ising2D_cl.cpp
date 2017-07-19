@@ -146,8 +146,8 @@ int main(int argc, char** argv)
   }
   //~ cudaMemcpy(d_lattice, h_lattice.data(), NUM_WORKERS * N * sizeof(int8_t), cudaMemcpyHostToDevice);
 
-  //~ // initialize all energies
-  //~ int* d_energies;
+  // initialize all energies
+  int* d_energies;
   //~ cudaMalloc((void**)&d_energies, NUM_WORKERS * sizeof(int));
   //~ computeEnergies<<<NUM_WORKERS / WORKERS_PER_BLOCK, WORKERS_PER_BLOCK>>>(d_lattice, d_energies);
   //~ cudaError_t err = cudaGetLastError();

@@ -39,32 +39,32 @@
 //~ using namespace std;
 
 
-// calculate bin index from energy E
-inline unsigned EBIN(int E)
-{
-  return (E + (d_N << 1)) >> 2;
-}
+//~ // calculate bin index from energy E
+//~ inline unsigned EBIN(int E)
+//~ {
+  //~ return (E + (d_N << 1)) >> 2;
+//~ }
 
-// calculate energy difference of one spin flip
-__forceinline__ int localE(unsigned idx, int8_t* lattice)
-{ 
-  int right = idx + 1;
-  int left = static_cast<int>(idx) - 1;
-  int up = idx + d_L;
-  int down = static_cast<int>(idx) - d_L;
+//~ // calculate energy difference of one spin flip
+//~ __forceinline__ int localE(unsigned idx, int8_t* lattice)
+//~ { 
+  //~ int right = idx + 1;
+  //~ int left = static_cast<int>(idx) - 1;
+  //~ int up = idx + d_L;
+  //~ int down = static_cast<int>(idx) - d_L;
   
-  // check periodic boundary conditions
-  if (right % d_L == 0) right -= d_L;
-  if (idx % d_L == 0) left += d_L;
-  if (up > static_cast<int>(d_N - 1) ) up -= d_N;
-  if (down < 0 ) down += d_N;
+  //~ // check periodic boundary conditions
+  //~ if (right % d_L == 0) right -= d_L;
+  //~ if (idx % d_L == 0) left += d_L;
+  //~ if (up > static_cast<int>(d_N - 1) ) up -= d_N;
+  //~ if (down < 0 ) down += d_N;
    
-   return -lattice[idx * d_NUM_WORKERS + WORKER] *
-     ( lattice[right * d_NUM_WORKERS + WORKER] +
-       lattice[left * d_NUM_WORKERS + WORKER] +
-       lattice[up * d_NUM_WORKERS + WORKER] + 
-       lattice[down * d_NUM_WORKERS + WORKER] );
-}
+   //~ return -lattice[idx * d_NUM_WORKERS + WORKER] *
+     //~ ( lattice[right * d_NUM_WORKERS + WORKER] +
+       //~ lattice[left * d_NUM_WORKERS + WORKER] +
+       //~ lattice[up * d_NUM_WORKERS + WORKER] + 
+       //~ lattice[down * d_NUM_WORKERS + WORKER] );
+//~ }
 
 
 __kernel void ising(
