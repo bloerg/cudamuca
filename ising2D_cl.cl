@@ -18,6 +18,8 @@
 // This includes my_uint64 type
 //~ #include "ising2D_io.hpp"
 
+#include "math.h"
+
 // 256 threads per block ensures the possibility of full occupancy
 // for all compute capabilities if thread count small enough
 #define WORKERS_PER_BLOCK 256
