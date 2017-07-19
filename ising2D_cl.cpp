@@ -82,7 +82,7 @@ int main(int argc, char** argv)
   // figure out optimal execution configuration
   // based on GPU architecture and generation
   int maxresidentthreads = device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
-  int totalmultiprocessors = device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS();
+  int totalmultiprocessors = device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
   int optimum_number_of_workers = maxresidentthreads*totalmultiprocessors;
   if (NUM_WORKERS == 0) {
     NUM_WORKERS = optimum_number_of_workers;
