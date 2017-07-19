@@ -13,7 +13,7 @@
 //~ #include <errno.h>
 
 // choose random number generator
-typedef r123::Philox4x32_R<7> RNG;
+//~ typedef r123::Philox4x32_R<7> RNG;
 
 // This includes my_uint64 type
 //~ #include "ising2D_io.hpp"
