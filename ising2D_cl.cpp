@@ -105,7 +105,7 @@ int main(int argc, char** argv)
  
   cl::Program ising_program(context, ising_kernel_string, true);
   
-  if (ising_program.build({ device }) != CL_SUCCESS){
+  if (ising_program.build({ device }, "-I Random123/include/") != CL_SUCCESS){
       std::cout << " Error building: " << ising_program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device) << "\n";
       getchar();
       exit(1);
