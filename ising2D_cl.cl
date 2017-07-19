@@ -49,13 +49,13 @@ typedef struct ConfigParams
 
 
 // calculate bin index from energy E
-inline unsigned EBIN(int E, ConfigParams configuration)
+inline unsigned EBIN(int E, struct ConfigParams* configuration)
 {
   return (E + (d_N << 1)) >> 2;
 }
 
 // calculate energy difference of one spin flip
-inline int localE(unsigned idx, char* lattice, ConfigParams configuration)
+inline int localE(unsigned idx, char* lattice, struct ConfigParams* configuration)
 { 
   int right = idx + 1;
   //~ int left = static_cast<int>(idx) - 1;
@@ -79,7 +79,7 @@ inline int localE(unsigned idx, char* lattice, ConfigParams configuration)
 }
 
 // calculate total energy
-int calculateEnergy(char* lattice, ConfigParams configuration)
+int calculateEnergy(char* lattice, struct ConfigParams* configuration)
 {
   int sum = 0;
 
@@ -91,7 +91,7 @@ int calculateEnergy(char* lattice, ConfigParams configuration)
 }
 
 // multicanonical Markov chain update (single spin flip)
-inline bool mucaUpdate(float rannum, int* energy, char* d_lattice, unsigned idx, ConfigParams configuration)
+inline bool mucaUpdate(float rannum, int* energy, char* d_lattice, unsigned idx, struct ConfigParams* configuration)
 {
   // precalculate energy difference
   int dE = -2 * localE(idx, d_lattice, configuration);
