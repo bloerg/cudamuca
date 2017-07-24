@@ -117,9 +117,70 @@ inline bool mucaUpdate(float rannum, int* energy, char* d_lattice, unsigned idx,
 //~ __launch_bounds__(WORKERS_PER_BLOCK, MY_KERNEL_MIN_BLOCKS)
 //~ FIXME: Translate two previous two lines into opencl
 //~ https://stackoverflow.com/questions/44704506/limiting-register-usage-in-cuda-launch-bounds-vs-maxrregcount
-computeEnergies(char *d_lattice, int* d_energies, struct ConfigParams* configuration)
+__kernel void computeEnergies(char *d_lattice, int* d_energies, struct ConfigParams* configuration)
 {
   d_energies[WORKER] = calculateEnergy(d_lattice, configuration);
+}
+
+// multicanonical iteration including initial thermalization
+//~ __global__ void
+//~ __launch_bounds__(WORKERS_PER_BLOCK, MY_KERNEL_MIN_BLOCKS)
+//~ FIXME: Translate two previous two lines into opencl; __global__ function is equivalent to __kernel function
+//~ https://stackoverflow.com/questions/44704506/limiting-register-usage-in-cuda-launch-bounds-vs-maxrregcount
+__kernel void mucaIteration(
+    int8_t* d_lattice, 
+    my_uint64* d_histogram, 
+    int* d_energies, 
+    unsigned iteration, 
+    unsigned seed, 
+    my_uint64 d_NUPDATES_THERM, 
+    my_uint64 d_NUPDATES,
+    struct ConfigParams* configuration
+)
+{
+  // initialize two RNGs
+  // one for acceptance propability (k1)
+  // and one for selection of a spin (same for all workers) (k2)
+  RNG rng;
+  RNG::key_type k1 = {{WORKER, 0xdecafbad}};
+  RNG::key_type k2 = {{0xC001CAFE, 0xdecafbad}};
+  RNG::ctr_type c = {{0, seed, iteration, 0xBADC0DED}};//0xBADCAB1E
+  RNG::ctr_type r1, r2; 
+ 
+  // reset global histogram
+  for (size_t i = 0; i < ((configuration->d_N + 1) / configuration->d_NUM_WORKERS) + 1; i++) {
+    if (i*configuration->d_NUM_WORKERS + WORKER < configuration->d_N + 1) {
+      d_histogram[i * configuration->d_NUM_WORKERS + WORKER] = 0;
+    }
+  }
+  __syncthreads();
+
+  int energy;
+  energy = d_energies[WORKER];
+
+  // thermalization
+  for (size_t i = 0; i < d_NUPDATES_THERM; i++) {
+    if(i%4 == 0) {
+      ++c[0];
+      r1 = rng(c, k1); r2 = rng(c, k2);
+    }
+    unsigned idx = static_cast<unsigned>(r123::u01fixedpt<float>(r2.v[i%4]) * configuration->d_N);
+    mucaUpdate(r123::u01fixedpt<float>(r1.v[i%4]), &energy, d_lattice, idx, configuration);
+  }
+
+  // estimate current propability distribution of W(E)
+  for (my_uint64 i = 0; i < d_NUPDATES; i++) {
+    if(i%4 == 0) {
+      ++c[0];
+      r1 = rng(c, k1); r2 = rng(c, k2);
+    }
+    unsigned idx = static_cast<unsigned>(r123::u01fixedpt<float>(r2.v[i%4]) * configuration->d_N);
+    mucaUpdate(r123::u01fixedpt<float>(r1.v[i%4]), &energy, d_lattice, idx);
+    // add to global histogram 
+    atomicAdd(d_histogram + EBIN(energy, configuration), 1);
+  }
+
+  d_energies[WORKER] = energy;
 }
 
 
@@ -136,61 +197,6 @@ __kernel void ising(
 
 
 
-
-
-
-
-
-
-//~ // multicanonical iteration including initial thermalization
-//~ __global__ void
-//~ __launch_bounds__(WORKERS_PER_BLOCK, MY_KERNEL_MIN_BLOCKS)
-//~ mucaIteration(int8_t* d_lattice, my_uint64* d_histogram, int* d_energies, unsigned iteration, unsigned seed, my_uint64 d_NUPDATES_THERM, my_uint64 d_NUPDATES)
-//~ {
-  //~ // initialize two RNGs
-  //~ // one for acceptance propability (k1)
-  //~ // and one for selection of a spin (same for all workers) (k2)
-  //~ RNG rng;
-  //~ RNG::key_type k1 = {{WORKER, 0xdecafbad}};
-  //~ RNG::key_type k2 = {{0xC001CAFE, 0xdecafbad}};
-  //~ RNG::ctr_type c = {{0, seed, iteration, 0xBADC0DED}};//0xBADCAB1E
-  //~ RNG::ctr_type r1, r2; 
- 
-  //~ // reset global histogram
-  //~ for (size_t i = 0; i < ((d_N + 1) / d_NUM_WORKERS) + 1; i++) {
-    //~ if (i*d_NUM_WORKERS + WORKER < d_N + 1) {
-      //~ d_histogram[i * d_NUM_WORKERS + WORKER] = 0;
-    //~ }
-  //~ }
-  //~ __syncthreads();
-
-  //~ int energy;
-  //~ energy = d_energies[WORKER];
-
-  //~ // thermalization
-  //~ for (size_t i = 0; i < d_NUPDATES_THERM; i++) {
-    //~ if(i%4 == 0) {
-      //~ ++c[0];
-      //~ r1 = rng(c, k1); r2 = rng(c, k2);
-    //~ }
-    //~ unsigned idx = static_cast<unsigned>(r123::u01fixedpt<float>(r2.v[i%4]) * d_N);
-    //~ mucaUpdate(r123::u01fixedpt<float>(r1.v[i%4]), &energy, d_lattice, idx);
-  //~ }
-
-  //~ // estimate current propability distribution of W(E)
-  //~ for (my_uint64 i = 0; i < d_NUPDATES; i++) {
-    //~ if(i%4 == 0) {
-      //~ ++c[0];
-      //~ r1 = rng(c, k1); r2 = rng(c, k2);
-    //~ }
-    //~ unsigned idx = static_cast<unsigned>(r123::u01fixedpt<float>(r2.v[i%4]) * d_N);
-    //~ mucaUpdate(r123::u01fixedpt<float>(r1.v[i%4]), &energy, d_lattice, idx);
-    //~ // add to global histogram 
-    //~ atomicAdd(d_histogram + EBIN(energy), 1);
-  //~ }
-
-  //~ d_energies[WORKER] = energy;
-//~ }
 
 //~ int main(int argc, char** argv)
 //~ {
