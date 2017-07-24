@@ -117,9 +117,9 @@ inline bool mucaUpdate(float rannum, int* energy, char* d_lattice, unsigned idx,
 //~ __launch_bounds__(WORKERS_PER_BLOCK, MY_KERNEL_MIN_BLOCKS)
 //~ FIXME: Translate two previous two lines into opencl
 //~ https://stackoverflow.com/questions/44704506/limiting-register-usage-in-cuda-launch-bounds-vs-maxrregcount
-computeEnergies(char *d_lattice, int* d_energies)
+computeEnergies(char *d_lattice, int* d_energies, struct ConfigParams* configuration)
 {
-  d_energies[WORKER] = calculateEnergy(d_lattice);
+  d_energies[WORKER] = calculateEnergy(d_lattice, configuration);
 }
 
 
