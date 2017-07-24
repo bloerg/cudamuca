@@ -18,7 +18,7 @@
 // This includes my_uint64 type
 //~ #include "ising2D_io.hpp"
 
-#include "math.h"
+//~ #include "math.h"
 
 // 256 threads per block ensures the possibility of full occupancy
 // for all compute capabilities if thread count small enough
@@ -100,13 +100,28 @@ inline bool mucaUpdate(float rannum, int* energy, char* d_lattice, unsigned idx,
 
   // flip with propability W(E_new)/W(E_old)
   // weights are stored in texture memory for faster random access
-  if (rannum < expf(tex1Dfetch(t_log_weights, EBIN(*energy + dE, configuration)) - tex1Dfetch(t_log_weights, EBIN(*energy, configuration)))) {
-    d_lattice[idx * configuration->d_NUM_WORKERS + WORKER] = -d_lattice[idx * configuration->d_NUM_WORKERS + WORKER];
-    *energy += dE;
-    return true;
-  }
+
+    //FIXME! https://devtalk.nvidia.com/default/topic/454937/cuda-programming-and-performance/texture-memory-how-do-you-use-it-/
+
+  //~ if (rannum < exp(tex1Dfetch(t_log_weights, EBIN(*energy + dE, configuration)) - tex1Dfetch(t_log_weights, EBIN(*energy, configuration)))) {
+    //~ d_lattice[idx * configuration->d_NUM_WORKERS + WORKER] = -d_lattice[idx * configuration->d_NUM_WORKERS + WORKER];
+    //~ *energy += dE;
+    //~ return true;
+  //~ }
   return false;
 }
+
+
+// initial calculation of total energy per worker 
+//~ __global void
+//~ __launch_bounds__(WORKERS_PER_BLOCK, MY_KERNEL_MIN_BLOCKS)
+//~ FIXME: Translate two previous two lines into opencl
+//~ https://stackoverflow.com/questions/44704506/limiting-register-usage-in-cuda-launch-bounds-vs-maxrregcount
+computeEnergies(char *d_lattice, int* d_energies)
+{
+  d_energies[WORKER] = calculateEnergy(d_lattice);
+}
+
 
 
 __kernel void ising(
@@ -125,13 +140,7 @@ __kernel void ising(
 
 
 
-//~ // initial calculation of total energy per worker 
-//~ __global__ void
-//~ __launch_bounds__(WORKERS_PER_BLOCK, MY_KERNEL_MIN_BLOCKS)
-//~ computeEnergies(int8_t *d_lattice, int* d_energies)
-//~ {
-  //~ d_energies[WORKER] = calculateEnergy(d_lattice);
-//~ }
+
 
 //~ // multicanonical iteration including initial thermalization
 //~ __global__ void
