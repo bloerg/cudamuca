@@ -126,11 +126,11 @@ int main(int argc, char** argv)
     NULL,
     &status
   );
-  std::cout << "clCreateBuffer status: " << status);
+  std::cout << "clCreateBuffer status: " << status;
   
   cl::Event writeEvt;
   status = cl_queue.EnqueueWriteBuffer(cl_queue, d_L_buf, CL_TRUE, 0, sizeof(cl_uint), &L, NULL, &writeEvt);
-  std::cout << "clEnqueueWriteBuffer status: " << status);
+  std::cout << "clEnqueueWriteBuffer status: " << status;
   
   
   cl::Kernel cl_kernel_mucaIteration(cl_program_ising, "mucaIteration");
