@@ -129,7 +129,7 @@ int main(int argc, char** argv)
   std::cout << "clCreateBuffer status: " << status;
   
   cl::Event writeEvt;
-  status = cl_queue.enqueueWriteBuffer(cl_queue, d_L_buf, CL_TRUE, 0, sizeof(cl_uint), &L, NULL, &writeEvt);
+  status = cl_queue.enqueueWriteBuffer(d_L_buf, CL_TRUE, 0, sizeof(cl_uint), &L, NULL, &writeEvt);
   std::cout << "clEnqueueWriteBuffer status: " << status;
   
   
