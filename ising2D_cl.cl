@@ -61,7 +61,7 @@ inline unsigned EBIN(int E, struct ConfigParams* configuration)
 }
 
 // calculate energy difference of one spin flip
-inline int localE(unsigned idx, char* lattice, struct ConfigParams* configuration)
+inline int localE(unsigned idx, __global char* lattice, struct ConfigParams* configuration)
 { 
   int right = idx + 1;
   //~ int left = static_cast<int>(idx) - 1;
