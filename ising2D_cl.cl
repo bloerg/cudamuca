@@ -45,70 +45,67 @@
 typedef unsigned long long my_uint64;
 __constant double my_uint64_max = 18446744073709551615; // = pow(2.0,64)-1;
 
-// structure for passing around configuration constants
-typedef struct ConfigParams
-{
-    uint d_L;
-    uint d_N;
-    uint d_NUM_WORKERS;
-} ConfigParams;
+
+__global uint d_L;
+__global uint d_N;
+__global uint d_NUM_WORKERS;
 
 
 // calculate bin index from energy E
-inline unsigned EBIN(int E, struct ConfigParams* configuration)
+inline unsigned EBIN(int E)
 {
-  return (E + (configuration->d_N << 1)) >> 2;
+  return (E + (d_N << 1)) >> 2;
 }
 
 // calculate energy difference of one spin flip
-inline int localE(unsigned idx, __global char* lattice, struct ConfigParams* configuration)
+inline int localE(unsigned idx, __global char* lattice)
 { 
   int right = idx + 1;
   //~ int left = static_cast<int>(idx) - 1;
   int left = convert_int( idx ) -1; 
-  int up = idx + configuration->d_L;
+  int up = idx + d_L;
   //~ int down = static_cast<int>(idx) - d_L;
-  int down = convert_int( idx ) - configuration->d_L;
+  int down = convert_int( idx ) - d_L;
   
   // check periodic boundary conditions
-  if (right % configuration->d_L == 0) right -= configuration->d_L;
-  if (idx % configuration->d_L == 0) left += configuration->d_L;
+  if (right % d_L == 0) right -= d_L;
+  if (idx % d_L == 0) left += d_L;
   //~ if (up > static_cast<int>(d_N - 1) ) up -= d_N;
-  if (up > convert_int(configuration->d_N - 1) ) up -= configuration->d_N;
-  if (down < 0 ) down += configuration->d_N;
+  if (up > convert_int(d_N - 1) ) up -= d_N;
+  if (down < 0 ) down += d_N;
    
-   return -lattice[idx * configuration->d_NUM_WORKERS + WORKER] *
-     ( lattice[right * configuration->d_NUM_WORKERS + WORKER] +
-       lattice[left * configuration->d_NUM_WORKERS + WORKER] +
-       lattice[up * configuration->d_NUM_WORKERS + WORKER] + 
-       lattice[down * configuration->d_NUM_WORKERS + WORKER] );
+   return -lattice[idx * d_NUM_WORKERS + WORKER] *
+     ( lattice[right * d_NUM_WORKERS + WORKER] +
+       lattice[left * d_NUM_WORKERS + WORKER] +
+       lattice[up * d_NUM_WORKERS + WORKER] + 
+       lattice[down * d_NUM_WORKERS + WORKER] );
 }
 
 // calculate total energy
-int calculateEnergy(__global char* lattice, struct ConfigParams* configuration)
+int calculateEnergy(__global char* lattice)
 {
   int sum = 0;
 
-  for (size_t i = 0; i < configuration->d_N; i++) {
-    sum += localE(i, lattice, configuration);
+  for (size_t i = 0; i < d_N; i++) {
+    sum += localE(i, lattice);
   }
   // divide out double counting
   return (sum >> 1); 
 }
 
 // multicanonical Markov chain update (single spin flip)
-inline bool mucaUpdate(float rannum, int* energy, char* d_lattice, unsigned idx, struct ConfigParams* configuration)
+inline bool mucaUpdate(float rannum, int* energy, char* d_lattice, unsigned idx)
 {
   // precalculate energy difference
-  int dE = -2 * localE(idx, d_lattice, configuration);
+  int dE = -2 * localE(idx, d_lattice);
 
   // flip with propability W(E_new)/W(E_old)
   // weights are stored in texture memory for faster random access
 
     //FIXME! https://devtalk.nvidia.com/default/topic/454937/cuda-programming-and-performance/texture-memory-how-do-you-use-it-/
 
-  //~ if (rannum < exp(tex1Dfetch(t_log_weights, EBIN(*energy + dE, configuration)) - tex1Dfetch(t_log_weights, EBIN(*energy, configuration)))) {
-    //~ d_lattice[idx * configuration->d_NUM_WORKERS + WORKER] = -d_lattice[idx * configuration->d_NUM_WORKERS + WORKER];
+  //~ if (rannum < exp(tex1Dfetch(t_log_weights, EBIN(*energy + dE)) - tex1Dfetch(t_log_weights, EBIN(*energy)))) {
+    //~ d_lattice[idx * d_NUM_WORKERS + WORKER] = -d_lattice[idx * d_NUM_WORKERS + WORKER];
     //~ *energy += dE;
     //~ return true;
   //~ }
@@ -121,9 +118,9 @@ inline bool mucaUpdate(float rannum, int* energy, char* d_lattice, unsigned idx,
 //~ __launch_bounds__(WORKERS_PER_BLOCK, MY_KERNEL_MIN_BLOCKS)
 //~ FIXME: Translate two previous two lines into opencl
 //~ https://stackoverflow.com/questions/44704506/limiting-register-usage-in-cuda-launch-bounds-vs-maxrregcount
-__kernel void computeEnergies(__global char* d_lattice, __global int* d_energies, __global struct ConfigParams* configuration)
+__kernel void computeEnergies(__global char* d_lattice, __global int* d_energies)
 {
-  d_energies[WORKER] = calculateEnergy(d_lattice, configuration);
+  d_energies[WORKER] = calculateEnergy(d_lattice);
 }
 
 // multicanonical iteration including initial thermalization
@@ -138,8 +135,7 @@ __kernel void mucaIteration(
     __global unsigned iteration, 
     __global unsigned seed, 
     __global my_uint64 d_NUPDATES_THERM, 
-    __global my_uint64 d_NUPDATES,
-    __global struct ConfigParams* configuration
+    __global my_uint64 d_NUPDATES
 )
 {
   // initialize two RNGs
@@ -152,9 +148,9 @@ __kernel void mucaIteration(
   RNG::ctr_type r1, r2; 
  
   // reset global histogram
-  for (size_t i = 0; i < ((configuration->d_N + 1) / configuration->d_NUM_WORKERS) + 1; i++) {
-    if (i*configuration->d_NUM_WORKERS + WORKER < configuration->d_N + 1) {
-      d_histogram[i * configuration->d_NUM_WORKERS + WORKER] = 0;
+  for (size_t i = 0; i < ((d_N + 1) / d_NUM_WORKERS) + 1; i++) {
+    if (i*d_NUM_WORKERS + WORKER < d_N + 1) {
+      d_histogram[i * d_NUM_WORKERS + WORKER] = 0;
     }
   }
   __syncthreads();
@@ -168,8 +164,8 @@ __kernel void mucaIteration(
       ++c[0];
       r1 = rng(c, k1); r2 = rng(c, k2);
     }
-    unsigned idx = static_cast<unsigned>(r123::u01fixedpt<float>(r2.v[i%4]) * configuration->d_N);
-    mucaUpdate(r123::u01fixedpt<float>(r1.v[i%4]), &energy, d_lattice, idx, configuration);
+    unsigned idx = static_cast<unsigned>(r123::u01fixedpt<float>(r2.v[i%4]) * d_N);
+    mucaUpdate(r123::u01fixedpt<float>(r1.v[i%4]), &energy, d_lattice, idx);
   }
 
   // estimate current propability distribution of W(E)
@@ -178,24 +174,13 @@ __kernel void mucaIteration(
       ++c[0];
       r1 = rng(c, k1); r2 = rng(c, k2);
     }
-    unsigned idx = static_cast<unsigned>(r123::u01fixedpt<float>(r2.v[i%4]) * configuration->d_N);
+    unsigned idx = static_cast<unsigned>(r123::u01fixedpt<float>(r2.v[i%4]) * d_N);
     mucaUpdate(r123::u01fixedpt<float>(r1.v[i%4]), &energy, d_lattice, idx);
     // add to global histogram 
-    atomicAdd(d_histogram + EBIN(energy, configuration), 1);
+    atomicAdd(d_histogram + EBIN(energy), 1);
   }
 
   d_energies[WORKER] = energy;
-}
-
-
-
-__kernel void ising(
-    __constant uint* d_N,
-    __constant uint* d_L,
-    __constant uint* d_NUM_WORKERS
-) {
-
-
 }
 
 

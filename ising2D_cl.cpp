@@ -97,14 +97,14 @@ int main(int argc, char** argv)
   cl::Context context({device});
 
   // read the kernel from source file
-  std::ifstream ising_kernel_file("ising2D_cl.cl");
-  std::string ising_kernel_string(
-      std::istreambuf_iterator<char>(ising_kernel_file),
+  std::ifstream ising_program_file("ising2D_cl.cl");
+  std::string ising_program_string(
+      std::istreambuf_iterator<char>(ising_program_file),
       (std::istreambuf_iterator<char>())
   );
 
  
-  cl::Program ising_program(context, ising_kernel_string, true);
+  cl::Program ising_program(context, ising_program_string, true);
   
   if (ising_program.build({ device }, "-I Random123/include/") != CL_SUCCESS){
       std::cout << " Error building: " << ising_program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device) << "\n";
@@ -115,7 +115,8 @@ int main(int argc, char** argv)
   std::cout << "N: " << N << " L: " << L << "\n";
 
   cl::CommandQueue queue(context, device);
-  cl::Kernel ising_kernel(ising_program, "ising");
+  cl::Kernel ising_kernel(ising_program, "mucaIteration");
+  cl::Kernel ising_kernel(ising_program, "computeEnergies");
   
   // copy constants to GPU
   ising_kernel.setArg(0, &N);
