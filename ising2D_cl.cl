@@ -41,6 +41,10 @@
 //~ using namespace std;
 
 
+// from ising2D_io.hpp
+typedef unsigned long long my_uint64;
+double my_uint64_max = pow(2.0,64)-1;
+
 // structure for passing around configuration constants
 typedef struct ConfigParams
 {
@@ -128,7 +132,7 @@ __kernel void computeEnergies(char *d_lattice, int* d_energies, struct ConfigPar
 //~ FIXME: Translate two previous two lines into opencl; __global__ function is equivalent to __kernel function
 //~ https://stackoverflow.com/questions/44704506/limiting-register-usage-in-cuda-launch-bounds-vs-maxrregcount
 __kernel void mucaIteration(
-    int8_t* d_lattice, 
+    char* d_lattice, 
     my_uint64* d_histogram, 
     int* d_energies, 
     unsigned iteration, 
