@@ -85,7 +85,7 @@ inline int localE(unsigned idx, char* lattice, struct ConfigParams* configuratio
 }
 
 // calculate total energy
-int calculateEnergy(char* lattice, struct ConfigParams* configuration)
+int calculateEnergy(__global char* lattice, struct ConfigParams* configuration)
 {
   int sum = 0;
 
