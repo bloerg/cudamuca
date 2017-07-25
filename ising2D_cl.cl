@@ -43,7 +43,7 @@
 
 // from ising2D_io.hpp
 typedef unsigned long long my_uint64;
-double my_uint64_max = pow(2.0,64)-1;
+__global double my_uint64_max = pow(2.0,64)-1;
 
 // structure for passing around configuration constants
 typedef struct ConfigParams
