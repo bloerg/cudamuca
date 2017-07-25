@@ -46,10 +46,6 @@ typedef unsigned long long my_uint64;
 __constant double my_uint64_max = 18446744073709551615; // = pow(2.0,64)-1;
 
 
-__global uint d_L;
-__global uint d_N;
-__global uint d_NUM_WORKERS;
-
 
 // calculate bin index from energy E
 inline unsigned EBIN(int E)

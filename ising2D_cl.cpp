@@ -114,14 +114,29 @@ int main(int argc, char** argv)
 
   std::cout << "N: " << N << " L: " << L << "\n";
 
-  cl::CommandQueue queue(cl_context, device);
+  cl::CommandQueue cl_queue(cl_context, device);
+  
+  d_L_buf = clCreateBuffer(
+    cl_context,
+    CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+    sizeof(cl_uint),
+    NULL,
+    &status
+  );
+  LOG_OCL_ERROR(status, "clCreateBuffer failed.");
+  
+  cl_event writeEvt;
+  status = clEnqueueWriteBuffer(cl_queue, d_L_buf, CL_TRUE, 0, sizeof(cl_uint), &L, NULL, &writeEvt);
+  LOG_OCL_ERROR(status, "clEnqueueWriteBuffer failed.");
+  
+  
   cl::Kernel cl_kernel_mucaIteration(cl_program_ising, "mucaIteration");
   cl::Kernel cl_kernel_computeEnergies(cl_program_ising, "computeEnergies");
   
 
   
-  queue.enqueueNDRangeKernel(cl_kernel_mucaIteration, cl::NDRange(0), cl::NDRange(10), cl::NDRange(1));
-  queue.enqueueNDRangeKernel(cl_kernel_computeEnergies, cl::NDRange(0), cl::NDRange(10), cl::NDRange(1));
+  cl_queue.enqueueNDRangeKernel(cl_kernel_mucaIteration, cl::NDRange(0), cl::NDRange(10), cl::NDRange(1));
+  cl_queue.enqueueNDRangeKernel(cl_kernel_computeEnergies, cl::NDRange(0), cl::NDRange(10), cl::NDRange(1));
   
 
 
