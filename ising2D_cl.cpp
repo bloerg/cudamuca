@@ -94,37 +94,34 @@ int main(int argc, char** argv)
   std::cout << "GPU capabilities\nCL_DEVICE_MAX_WORK_GROUP_SIZE: " << maxresidentthreads << "\nCL_DEVICE_MAX_COMPUTE_UNITS: " << totalmultiprocessors << "\n";
   
   
-  cl::Context context({device});
+  cl::Context cl_context({device});
 
   // read the kernel from source file
-  std::ifstream ising_program_file("ising2D_cl.cl");
-  std::string ising_program_string(
-      std::istreambuf_iterator<char>(ising_program_file),
+  std::ifstream cl_program_file_ising("ising2D_cl.cl");
+  std::string cl_program_string_ising(
+      std::istreambuf_iterator<char>(cl_program_file_ising),
       (std::istreambuf_iterator<char>())
   );
 
  
-  cl::Program ising_program(context, ising_program_string, true);
+  cl::Program cl_program_ising(cl_context, cl_program_string_ising, true);
   
-  if (ising_program.build({ device }, "-I Random123/include/") != CL_SUCCESS){
-      std::cout << " Error building: " << ising_program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device) << "\n";
+  if (cl_program_ising.build({ device }, "-I Random123/include/") != CL_SUCCESS){
+      std::cout << " Error building: " << cl_program_ising.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device) << "\n";
       getchar();
       exit(1);
   }
 
   std::cout << "N: " << N << " L: " << L << "\n";
 
-  cl::CommandQueue queue(context, device);
-  cl::Kernel ising_kernel(ising_program, "mucaIteration");
-  cl::Kernel ising_kernel(ising_program, "computeEnergies");
+  cl::CommandQueue queue(cl_context, device);
+  cl::Kernel cl_kernel_mucaIteration(cl_program_ising, "mucaIteration");
+  cl::Kernel cl_kernel_computeEnergies(cl_program_ising, "computeEnergies");
   
-  // copy constants to GPU
-  ising_kernel.setArg(0, &N);
-  ising_kernel.setArg(1, &L);
-  ising_kernel.setArg(2, &NUM_WORKERS);
 
   
-  queue.enqueueNDRangeKernel(ising_kernel, cl::NDRange(0), cl::NDRange(10), cl::NDRange(1));
+  queue.enqueueNDRangeKernel(cl_kernel_mucaIteration, cl::NDRange(0), cl::NDRange(10), cl::NDRange(1));
+  queue.enqueueNDRangeKernel(cl_kernel_computeEnergies, cl::NDRange(0), cl::NDRange(10), cl::NDRange(1));
   
 
 
