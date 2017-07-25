@@ -41,6 +41,9 @@ using namespace std;
 
 int main(int argc, char** argv)
 {
+  
+  int status;
+  
   // read command line arguments and initialize constants (see ising2D_io.hpp)
   parseArgs(argc, argv);
 
@@ -116,18 +119,18 @@ int main(int argc, char** argv)
 
   cl::CommandQueue cl_queue(cl_context, device);
   
-  d_L_buf = clCreateBuffer(
+  cl::Buffer d_L_buf (
     cl_context,
     CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
     sizeof(cl_uint),
     NULL,
     &status
   );
-  LOG_OCL_ERROR(status, "clCreateBuffer failed.");
+  std::cout << "clCreateBuffer status: " << status);
   
-  cl_event writeEvt;
-  status = clEnqueueWriteBuffer(cl_queue, d_L_buf, CL_TRUE, 0, sizeof(cl_uint), &L, NULL, &writeEvt);
-  LOG_OCL_ERROR(status, "clEnqueueWriteBuffer failed.");
+  cl::Event writeEvt;
+  status = cl_queue.EnqueueWriteBuffer(cl_queue, d_L_buf, CL_TRUE, 0, sizeof(cl_uint), &L, NULL, &writeEvt);
+  std::cout << "clEnqueueWriteBuffer status: " << status);
   
   
   cl::Kernel cl_kernel_mucaIteration(cl_program_ising, "mucaIteration");
