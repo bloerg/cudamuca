@@ -121,7 +121,7 @@ inline bool mucaUpdate(float rannum, int* energy, char* d_lattice, unsigned idx,
 //~ __launch_bounds__(WORKERS_PER_BLOCK, MY_KERNEL_MIN_BLOCKS)
 //~ FIXME: Translate two previous two lines into opencl
 //~ https://stackoverflow.com/questions/44704506/limiting-register-usage-in-cuda-launch-bounds-vs-maxrregcount
-__kernel void computeEnergies(__global char* d_lattice, __global int* d_energies, __private struct ConfigParams* configuration)
+__kernel void computeEnergies(__global char* d_lattice, __global int* d_energies, __global struct ConfigParams* configuration)
 {
   d_energies[WORKER] = calculateEnergy(d_lattice, configuration);
 }
@@ -132,14 +132,14 @@ __kernel void computeEnergies(__global char* d_lattice, __global int* d_energies
 //~ FIXME: Translate two previous two lines into opencl; __global__ function is equivalent to __kernel function
 //~ https://stackoverflow.com/questions/44704506/limiting-register-usage-in-cuda-launch-bounds-vs-maxrregcount
 __kernel void mucaIteration(
-    __private char* d_lattice, 
-    __private my_uint64* d_histogram, 
-    __private int* d_energies, 
-    __private unsigned iteration, 
-    __private unsigned seed, 
-    __private my_uint64 d_NUPDATES_THERM, 
-    __private my_uint64 d_NUPDATES,
-    __private struct ConfigParams* configuration
+    __global char* d_lattice, 
+    __global my_uint64* d_histogram, 
+    __global int* d_energies, 
+    __global unsigned iteration, 
+    __global unsigned seed, 
+    __global my_uint64 d_NUPDATES_THERM, 
+    __global my_uint64 d_NUPDATES,
+    __global struct ConfigParams* configuration
 )
 {
   // initialize two RNGs
