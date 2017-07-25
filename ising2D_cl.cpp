@@ -119,6 +119,10 @@ int main(int argc, char** argv)
 
   cl::CommandQueue cl_queue(cl_context, device);
   
+  
+  // copy L, N and NUM_WORKERS to device
+  cl::Event writeEvt;
+  
   cl::Buffer d_L_buf (
     cl_context,
     CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
@@ -127,11 +131,32 @@ int main(int argc, char** argv)
     &status
   );
   std::cout << "clCreateBuffer status: " << status;
-  
-  cl::Event writeEvt;
   status = cl_queue.enqueueWriteBuffer(d_L_buf, CL_TRUE, 0, sizeof(cl_uint), &L, NULL, &writeEvt);
   std::cout << "clEnqueueWriteBuffer status: " << status;
   
+  cl::Buffer d_N_buf (
+    cl_context,
+    CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+    sizeof(cl_uint),
+    NULL,
+    &status
+  );
+  std::cout << "clCreateBuffer status: " << status;
+  status = cl_queue.enqueueWriteBuffer(d_N_buf, CL_TRUE, 0, sizeof(cl_uint), &N, NULL, &writeEvt);
+  std::cout << "clEnqueueWriteBuffer status: " << status;
+
+  cl::Buffer d_NUM_WORKERS_buf (
+    cl_context,
+    CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+    sizeof(cl_uint),
+    NULL,
+    &status
+  );
+  std::cout << "clCreateBuffer status: " << status;
+  status = cl_queue.enqueueWriteBuffer(d_NUM_WORKERS_buf, CL_TRUE, 0, sizeof(cl_uint), &NUM_WORKERS, NULL, &writeEvt);
+  std::cout << "clEnqueueWriteBuffer status: " << status;
+
+
   
   cl::Kernel cl_kernel_mucaIteration(cl_program_ising, "mucaIteration");
   cl::Kernel cl_kernel_computeEnergies(cl_program_ising, "computeEnergies");
