@@ -132,14 +132,14 @@ __kernel void computeEnergies(char *d_lattice, int* d_energies, struct ConfigPar
 //~ FIXME: Translate two previous two lines into opencl; __global__ function is equivalent to __kernel function
 //~ https://stackoverflow.com/questions/44704506/limiting-register-usage-in-cuda-launch-bounds-vs-maxrregcount
 __kernel void mucaIteration(
-    char* d_lattice, 
-    my_uint64* d_histogram, 
-    int* d_energies, 
-    unsigned iteration, 
-    unsigned seed, 
-    my_uint64 d_NUPDATES_THERM, 
-    my_uint64 d_NUPDATES,
-    struct ConfigParams* configuration
+    __private char* d_lattice, 
+    __private my_uint64* d_histogram, 
+    __private int* d_energies, 
+    __private unsigned iteration, 
+    __private unsigned seed, 
+    __private my_uint64 d_NUPDATES_THERM, 
+    __private my_uint64 d_NUPDATES,
+    __private struct ConfigParams* configuration
 )
 {
   // initialize two RNGs
