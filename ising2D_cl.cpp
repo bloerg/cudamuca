@@ -203,7 +203,7 @@ int main(int argc, char** argv)
 
   // initialize all energies
   int* d_energies;
-  d_energies = malloc(NUM_WORKERS * sizeof(int));
+  d_energies = new int[NUM_WORKERS * sizeof(int)];
   //~ cudaMalloc((void**)&d_energies, NUM_WORKERS * sizeof(int));
 
   cl::Buffer d_energies_buf (
