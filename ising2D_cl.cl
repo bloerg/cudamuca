@@ -5,6 +5,11 @@
 #define WORKER get_global_id(0)
 
 
+// Random Number Generator
+#include "Random123/include/Random123/philox.h"
+//#include "uniform.h"
+
+
 // from ising2D_io.hpp
 typedef unsigned long long my_uint64;
 //~ __constant double my_uint64_max = 18446744073709551615; // = pow(2.0,64)-1;
@@ -44,7 +49,99 @@ int calculateEnergy(__global char* lattice, int* d_L, int* d_N, int* d_NUM_WORKE
   return (sum >> 1); 
 }
 
+
+// multicanonical Markov chain update (single spin flip)
+inline bool mucaUpdate(float rannum, int* energy, __global char* d_lattice, uint idx, int* d_L, int* d_N, int* d_NUM_WORKERS)
+{
+  // precalculate energy difference
+  int dE = -2 * localE(idx, d_lattice, d_L, d_N, d_NUM_WORKERS);
+
+  // flip with propability W(E_new)/W(E_old)
+  // weights are stored in texture memory for faster random access
+  
+  //FIXME: tex1Dfetch equivalent in OPENCL?
+  //~ if (rannum < expf(tex1Dfetch(t_log_weights, EBIN(*energy + dE)) - tex1Dfetch(t_log_weights, EBIN(*energy)))) {
+  if (1) { //FIXME
+    d_lattice[idx * *d_NUM_WORKERS + WORKER] = -d_lattice[idx * *d_NUM_WORKERS + WORKER];
+    *energy += dE;
+    return true;
+  }
+  return false;
+}
+
+
 __kernel void computeEnergies(__global char* d_lattice, __global int* d_energies, __private int d_L, __private int d_N, __private int d_NUM_WORKERS)
 {
   d_energies[WORKER] = calculateEnergy(d_lattice, &d_L, &d_N, &d_NUM_WORKERS);
+}
+
+
+__kernel void mucaIteration(
+  __global char* d_lattice, 
+  __global my_uint64* d_histogram, 
+  __global int* d_energies, 
+  __private uint iteration, 
+  __private uint seed, 
+  __private my_uint64 d_NUPDATES_THERM, 
+  __private my_uint64 d_NUPDATES,
+  __private int d_L, 
+  __private int d_N, 
+  __private int d_NUM_WORKERS
+  
+)
+{
+  // initialize two RNGs
+  // one for acceptance propability (k1)
+  // and one for selection of a spin (same for all workers) (k2)
+
+  philox4x32_key_t k1 = {{WORKER, 0xdecafbad}};
+  philox4x32_key_t k2 = {{0xC001CAFE, 0xdecafbad}};
+  philox4x32_ctr_t c = {{0, seed, iteration, 0xBADC0DED}};//0xBADCAB1E
+  philox4x32_ctr_t r1, r2;
+  
+  
+
+  //~ RNG rng;
+  //~ RNG::key_type k1 = {{WORKER, 0xdecafbad}};
+  //~ RNG::key_type k2 = {{0xC001CAFE, 0xdecafbad}};
+  //~ RNG::ctr_type c = {{0, seed, iteration, 0xBADC0DED}};//0xBADCAB1E
+  //~ RNG::ctr_type r1, r2; 
+ 
+  // reset global histogram
+  for (size_t i = 0; i < ((d_N + 1) / d_NUM_WORKERS) + 1; i++) {
+    if (i*d_NUM_WORKERS + WORKER < d_N + 1) {
+      d_histogram[i * d_NUM_WORKERS + WORKER] = 0;
+    }
+  }
+  
+  //~ __syncthreads();
+  //FIXME: What is the equivalent in Opencl?
+
+  int energy;
+  energy = d_energies[WORKER];
+
+  // thermalization
+  for (size_t i = 0; i < d_NUPDATES_THERM; i++) {
+    if(i%4 == 0) {
+      ++c[0];
+      //r1 = rng(c, k1); r2 = rng(c, k2);
+      r1 = philox4x32_R(7, c, k1); r2 = philox4x32_R(7, c, k2); //7 rounds
+    }
+    unsigned idx = static_cast<unsigned>(r123::u01fixedpt<float>(r2.v[i%4]) * d_N);
+    mucaUpdate(r123::u01fixedpt<float>(r1.v[i%4]), &energy, d_lattice, idx, &d_L, &d_N, &d_NUM_WORKERS);
+  }
+
+  // estimate current propability distribution of W(E)
+  for (my_uint64 i = 0; i < d_NUPDATES; i++) {
+    if(i%4 == 0) {
+      ++c[0];
+      r1 = rng(c, k1); r2 = rng(c, k2);
+    }
+    unsigned idx = static_cast<unsigned>(r123::u01fixedpt<float>(r2.v[i%4]) * d_N);
+    mucaUpdate(r123::u01fixedpt<float>(r1.v[i%4]), &energy, d_lattice, idx, &d_NUM_WORKERS);
+    // add to global histogram 
+    atomicAdd(d_histogram + EBIN(energy), 1);
+  }
+
+  d_energies[WORKER] = energy;
 }

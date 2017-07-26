@@ -91,6 +91,8 @@ int main(int argc, char** argv)
   }
   
   cl::Kernel cl_kernel_compute_energies(cl_program_ising, "computeEnergies");
+  cl::Kernel cl_kernel_muca_iteration(cl_program_ising, "mucaIteration");
+
 
 
   //~ cout << "N: "<< N << " L: " << L << " NUM_WORKERS: " << NUM_WORKERS << "\n"; //debug
@@ -196,8 +198,8 @@ int main(int argc, char** argv)
   // heuristic factor that determines the number of statistic per iteration
   // should be related to the integrated autocorrelation time
   double z = 2.25;
-  // main iteration loop
   
+  // main iteration loop
   for (size_t k=0; k < MAX_ITER; k++) {
     // start timer
     //~ cudaDeviceSynchronize();
