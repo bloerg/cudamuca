@@ -5,6 +5,8 @@
 // This includes my_uint64 type
 #include "ising2D_io.hpp"
 
+#include "muca.hpp"
+
 // Random Number Generator
 #include "Random123/philox.h"
 #include "Random123/examples/uniform.hpp"
@@ -72,6 +74,23 @@ int main(int argc, char** argv)
   cl::Context cl_context({device});
   cl::CommandQueue cl_queue(cl_context, device);
 
+ // read the kernel from source file
+  std::ifstream cl_program_file_ising("ising2D_cl.cl");
+  std::string cl_program_string_ising(
+      std::istreambuf_iterator<char>(cl_program_file_ising),
+      (std::istreambuf_iterator<char>())
+  );
+
+ 
+  cl::Program cl_program_ising(cl_context, cl_program_string_ising, true);
+  
+  if (cl_program_ising.build({ device }, "-I Random123/include/") != CL_SUCCESS){
+      std::cout << " Error building: " << cl_program_ising.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device) << "\n";
+      getchar();
+      exit(1);
+  }
+  
+  cl::Kernel cl_kernel_compute_energies(cl_program_ising, "computeEnergies");
 
 
   //~ cout << "N: "<< N << " L: " << L << " NUM_WORKERS: " << NUM_WORKERS << "\n"; //debug
@@ -98,7 +117,6 @@ int main(int argc, char** argv)
   
   int memory_operation_status;
   cl::Event writeEvt;
-
   
   cl::Buffer d_lattice_buf (
     cl_context,
@@ -112,9 +130,145 @@ int main(int argc, char** argv)
   std::cout << "clEnqueueWriteBuffer status: " << memory_operation_status << "\n";
 
 
+  // initialize all energies
+  //~ int* d_energies;
+  //~ cudaMalloc((void**)&d_energies, NUM_WORKERS * sizeof(int));
+
+  cl::Buffer d_energies_buf (
+    cl_context,
+    CL_MEM_READ_WRITE,
+    NUM_WORKERS * sizeof(cl_int),
+    NULL,
+    &memory_operation_status
+  );
+  std::cout << "clCreateBuffer status: " << memory_operation_status << "\n";
+  
+  cl_kernel_compute_energies.setArg(0, d_lattice_buf);
+  cl_kernel_compute_energies.setArg(1, d_energies_buf);
+  cl_kernel_compute_energies.setArg(2, &L);
+  cl_kernel_compute_energies.setArg(3, &N);
+  cl_kernel_compute_energies.setArg(4, &NUM_WORKERS);
+
+  //FIXME: Machen diese Parameter Sinn?
+  cl_queue.enqueueNDRangeKernel(cl_kernel_compute_energies, cl::NDRange(0), cl::NDRange(NUM_WORKERS / WORKERS_PER_BLOCK), cl::NDRange(WORKERS_PER_BLOCK));
+
+
+  // initialize ONE global weight array
+  vector<cl_float> h_log_weights(N + 1, 0.0f);
+  //~ cudaMalloc((void**)&d_log_weights, (N + 1) * sizeof(float));
+  cl::Buffer d_log_weights_buf (
+    cl_context,
+    CL_MEM_READ_WRITE,
+    ( N + 1 ) * sizeof(cl_float),
+    NULL,
+    &memory_operation_status
+  );
+  std::cout << "clCreateBuffer status: " << memory_operation_status << "\n";
+  
+  
+  // texture for weights
+  //~ cudaBindTexture(NULL, t_log_weights, d_log_weights, (N + 1) * sizeof(float));
+  //~ FIXME: What is the Opencl equivalent of the previous line?
+  
+  // initialize ONE global histogram
+  vector<my_uint64> h_histogram((N + 1), 0);
+  //~ my_uint64* d_histogram;
+  //~ cudaMalloc((void**)&d_histogram, (N + 1) * sizeof(my_uint64));
+  cl::Buffer d_histogram_buf (
+    cl_context,
+    CL_MEM_READ_WRITE,
+    ( N + 1 ) * sizeof(my_uint64),
+    NULL,
+    &memory_operation_status
+  );
+  std::cout << "clCreateBuffer status: " << memory_operation_status << "\n";
+
+  // timing and statistics
+  vector<long double> times;
+  timespec start, stop;
+  ofstream iterfile;
+  
+  iterfile.open("run_iterations.dat");
+  // initial estimate of width at infinite temperature 
+  // (random initialization requires practically no thermalization)
+  unsigned width = 10;
+  double nupdates_run = 1;
+  // heuristic factor that determines the number of statistic per iteration
+  // should be related to the integrated autocorrelation time
+  double z = 2.25;
+  // main iteration loop
+  
+  for (size_t k=0; k < MAX_ITER; k++) {
+    // start timer
+    //~ cudaDeviceSynchronize();
+    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
+    // copy global weights to GPU
+    //~ cudaMemcpy(d_log_weights, h_log_weights.data(), (N + 1) * sizeof(float), cudaMemcpyHostToDevice);
+
+    memory_operation_status = cl_queue.enqueueWriteBuffer(d_log_weights_buf, CL_TRUE, 0, (N+1) * sizeof(cl_float), h_log_weights.data(), NULL, &writeEvt);
+    std::cout << "clEnqueueWriteBuffer status: " << memory_operation_status << "\n";
+    
+    
+    // acceptance rate and correlation time corrected "random walk"
+    // in factor 30 we adjusted acceptance rate and >L range requirement of our present Ising situation
+    NUPDATES_THERM = 30 * width;
+    if (width<N) {
+      // 6 is motivated by the average acceptance rate of a multicanonical simulation ~0.45 -> (1/0.45)**z~6
+      nupdates_run = 6 * pow(width, z) / NUM_WORKERS;
+    }
+    else {
+      // for a flat spanning histogram, we assume roughly equally distributed
+      // walkers and reduce the thermalization time
+      // heuristic modification factor;
+      // (>1; small enough to introduce statistical fluctuations on the convergence measure)
+      nupdates_run *= 1.1;
+    }
+    NUPDATES = static_cast<my_uint64>(nupdates_run)+1;
+    // local iteration on each thread, writing to global histogram
+    
+    //FIXME: //~ mucaIteration<<<NUM_WORKERS / WORKERS_PER_BLOCK, WORKERS_PER_BLOCK>>>(d_lattice, d_histogram, d_energies, k, seed, NUPDATES_THERM, NUPDATES);
+    //~ cudaError_t err = cudaGetLastError();
+    //~ if (err != cudaSuccess) {
+      //~ cout << "Error: " << cudaGetErrorString(err) << " in " << __FILE__ << __LINE__ << endl;
+      //~ exit(err);
+    //~ }
+
+    // copy global histogram back to CPU
+    //~ cudaMemcpy(h_histogram.data(), d_histogram, (N + 1) * sizeof(my_uint64), cudaMemcpyDeviceToHost);
+
+    // stop timer
+    //~ cudaDeviceSynchronize();
+    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &stop);
+    long double elapsed = 1e9* (stop.tv_sec - start.tv_sec) + (stop.tv_nsec - start.tv_nsec);
+    times.push_back(elapsed);
+    TOTAL_THERM   += NUPDATES_THERM;
+    TOTAL_UPDATES += NUPDATES;
+   
+    // flatness in terms of kullback-leibler-divergence; 
+    // requires sufficient thermalization!!! 
+    double dk  = d_kullback(h_histogram);
+    iterfile << "#NITER = " << k  << " dk=" << dk << endl;
+    writeHistograms(h_log_weights, h_histogram, iterfile);
+    if (dk<1e-4) {
+      break;
+    }
+
+    // measure width of the current histogram
+    size_t start,end;
+    getHistogramRange(h_histogram, start, end);
+    unsigned width_new = end-start;
+    if (width_new > width) width=width_new;
+
+    // update logarithmic weights with basic scheme if not converged
+    updateWeights(h_log_weights, h_histogram);
+  }
+  iterfile.close();
+
 
 
 //free memory section
+
+ 
 
 return 0;
 }
