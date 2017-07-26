@@ -164,15 +164,25 @@ int main(int argc, char** argv)
 
   
   cl_queue.enqueueNDRangeKernel(cl_kernel_mucaIteration, cl::NDRange(0), cl::NDRange(10), cl::NDRange(1));
-  cl_queue.enqueueNDRangeKernel(cl_kernel_computeEnergies, cl::NDRange(0), cl::NDRange(10), cl::NDRange(1));
+
   
 
 
   // initialize NUM_WORKERS (LxL) lattices
   RNG rng;
-  vector<int8_t> h_lattice(NUM_WORKERS * N);
-  int8_t* d_lattice;
+  vector<cl_char> h_lattice(NUM_WORKERS * N);
+  
+  //int8_t* d_lattice;
   //~ cudaMalloc((void**)&d_lattice, NUM_WORKERS * N * sizeof(int8_t));
+  cl::Buffer d_lattice_buf (
+    cl_context,
+    CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR,
+    NUM_WORKERS * N * sizeof(cl_char) ,
+    NULL,
+    &status
+  );
+  std::cout << "clCreateBuffer status: " << status;
+  
   for (unsigned worker=0; worker < NUM_WORKERS; worker++) {
     RNG::key_type k = {{worker, 0xdecafbad}};
     RNG::ctr_type c = {{0, seed, 0xBADCAB1E, 0xBADC0DED}};
@@ -185,17 +195,37 @@ int main(int argc, char** argv)
       h_lattice.at(i*NUM_WORKERS+worker) = 2*(r123::u01fixedpt<float>(r.v[i%4]) < 0.5)-1;
     }
   }
+  
   //~ cudaMemcpy(d_lattice, h_lattice.data(), NUM_WORKERS * N * sizeof(int8_t), cudaMemcpyHostToDevice);
+  status = cl_queue.enqueueWriteBuffer(d_lattice_buf, CL_TRUE, 0, NUM_WORKERS * N * sizeof(cl_char), h_lattice.data(), NULL, &writeEvt);
+  std::cout << "clEnqueueWriteBuffer status: " << status;
+
 
   // initialize all energies
   int* d_energies;
   //~ cudaMalloc((void**)&d_energies, NUM_WORKERS * sizeof(int));
+
+  cl::Buffer d_energies_buf (
+    cl_context,
+    CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR,
+    NUM_WORKERS * sizeof(cl_int) ,
+    NULL,
+    &status
+  );
+  std::cout << "clCreateBuffer status: " << status;
+  status = cl_queue.enqueueWriteBuffer(d_energies_buf, CL_TRUE, 0, NUM_WORKERS * sizeof(cl_int), d_energies, NULL, &writeEvt);
+  std::cout << "clEnqueueWriteBuffer status: " << status;
+
   //~ computeEnergies<<<NUM_WORKERS / WORKERS_PER_BLOCK, WORKERS_PER_BLOCK>>>(d_lattice, d_energies);
   //~ cudaError_t err = cudaGetLastError();
   //~ if (err != cudaSuccess) {
     //~ cout << "Error: " << cudaGetErrorString(err) << " in " << __FILE__ << __LINE__ << endl;
     //~ exit(err);
   //~ }
+
+  cl_kernel_computeEnergies.setArg(0, d_lattice_buf);
+  cl_kernel_computeEnergies.setArg(1, d_energies_buf);
+  cl_queue.enqueueNDRangeKernel(cl_kernel_computeEnergies, cl::NDRange(0), cl::NDRange(10), cl::NDRange(1));
 
   //~ // initialize ONE global weight array
   //~ vector<float> h_log_weights(N + 1, 0.0f);
