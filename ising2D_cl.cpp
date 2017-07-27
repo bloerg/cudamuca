@@ -84,7 +84,7 @@ int main(int argc, char** argv)
  
   cl::Program cl_program_ising(cl_context, cl_program_string_ising, true);
   
-  if (cl_program_ising.build({ device }, "-I Random123/include/") != CL_SUCCESS){
+  if (cl_program_ising.build({ device }, "-I include") != CL_SUCCESS){
       std::cout << " Error building: " << cl_program_ising.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device) << "\n";
       getchar();
       exit(1);
