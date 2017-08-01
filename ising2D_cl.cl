@@ -1,4 +1,5 @@
 
+//~ #pragma OPENCL EXTENSION cl_intel_printf : enable
 
 
 //#pragma OPENCL EXTENSION cl_khr_fp64 : enable
@@ -61,7 +62,7 @@ int calculateEnergy(__global char* lattice, int* d_L, int* d_N, int* d_NUM_WORKE
 
 
 // multicanonical Markov chain update (single spin flip)
-inline bool mucaUpdate(float rannum, int* energy, __global char* d_lattice, uint idx, int* d_L, int* d_N, int* d_NUM_WORKERS)
+inline bool mucaUpdate(float rannum, int* energy, __global char* d_lattice, __global float* d_log_weights, uint idx, int* d_L, int* d_N, int* d_NUM_WORKERS)
 {
   // precalculate energy difference
   int dE = -2 * localE(idx, d_lattice, d_L, d_N, d_NUM_WORKERS);
@@ -71,7 +72,7 @@ inline bool mucaUpdate(float rannum, int* energy, __global char* d_lattice, uint
   
   //FIXME: tex1Dfetch equivalent in OPENCL?
   //~ if (rannum < expf(tex1Dfetch(t_log_weights, EBIN(*energy + dE)) - tex1Dfetch(t_log_weights, EBIN(*energy)))) {
-  if (1) { //FIXME
+  if (rannum < exp(d_log_weights[EBIN(*energy + dE, d_N)] - d_log_weights[EBIN(*energy, d_N)] ) ) { //FIXME
     d_lattice[idx * *d_NUM_WORKERS + WORKER] = -d_lattice[idx * *d_NUM_WORKERS + WORKER];
     *energy += dE;
     return true;
@@ -90,6 +91,7 @@ __kernel void mucaIteration(
   __global char* d_lattice, 
   __global ulong* d_histogram, 
   __global int* d_energies, 
+  __global float* d_log_weights,
   __private uint iteration, 
   __private uint seed, 
   __private ulong d_NUPDATES_THERM, 
@@ -115,14 +117,20 @@ __kernel void mucaIteration(
   //~ RNG::ctr_type r1, r2; 
  
   // reset global histogram
-  for (size_t i = 0; i < ((d_N + 1) / d_NUM_WORKERS) + 1; i++) {
-    if (i*d_NUM_WORKERS + WORKER < d_N + 1) {
-      d_histogram[i * d_NUM_WORKERS + WORKER] = 0;
-    }
+  //~ for (size_t i = 0; i < ((d_N + 1) / d_NUM_WORKERS) + 1; i++) {
+    //~ if (i*d_NUM_WORKERS + WORKER < d_N + 1) {
+      //~ d_histogram[i * d_NUM_WORKERS + WORKER] = 0;
+    //~ }
+  //~ }
+  
+  for (size_t i = 0; i< d_N+1 ; i++ ) {
+   d_histogram[i] = 0; 
   }
   
   //~ __syncthreads();
   //FIXME: What is the equivalent in Opencl?
+
+  barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 
   int energy;
   energy = d_energies[WORKER];
@@ -135,9 +143,9 @@ __kernel void mucaIteration(
       r1 = philox4x32_R(7, c, k1); r2 = philox4x32_R(7, c, k2); //7 rounds
     }
     //~ unsigned idx = convert_uint(r123::u01fixedpt<float>(r2.v[i%4]) * d_N);
-    uint idx = convert_uint(u01fixedpt_closed_closed_32_24(r2.v[i%4]) * d_N); // 24_32 = float;  64_53 = double
+    uint idx = convert_uint(u01fixedpt_open_open_32_24(r2.v[i%4]) * d_N); // 24_32 = float;  64_53 = double
     //~ mucaUpdate(r123::u01fixedpt<float>(r1.v[i%4]), &energy, d_lattice, idx, &d_L, &d_N, &d_NUM_WORKERS);
-    mucaUpdate(u01fixedpt_closed_closed_32_24(r1.v[i%4]), &energy, d_lattice, idx, &d_L, &d_N, &d_NUM_WORKERS);
+    mucaUpdate(u01fixedpt_open_open_32_24(r1.v[i%4]), &energy, d_lattice, d_log_weights, idx, &d_L, &d_N, &d_NUM_WORKERS);
   }
 
   // estimate current propability distribution of W(E)
@@ -149,10 +157,13 @@ __kernel void mucaIteration(
     //~ unsigned idx = convert_uint(r123::u01fixedpt<float>(r2.v[i%4]) * d_N);
     uint idx = convert_uint(u01fixedpt_closed_closed_32_24(r2.v[i%4]) * d_N); // 24_32 = float;  64_53 = double
     //~ mucaUpdate(r123::u01fixedpt<float>(r1.v[i%4]), &energy, d_lattice, idx, &d_NUM_WORKERS);
-    mucaUpdate(u01fixedpt_closed_closed_32_24(r1.v[i%4]), &energy, d_lattice, idx, &d_L, &d_N, &d_NUM_WORKERS);
+    mucaUpdate(u01fixedpt_closed_closed_32_24(r1.v[i%4]), &energy, d_lattice, d_log_weights, idx, &d_L, &d_N, &d_NUM_WORKERS);
     // add to global histogram
     d_histogram[EBIN(energy, &d_N)] += 1;
   }
-
+  for (uint hc=0; hc<10; hc++) {
+    d_histogram[hc] = 123;
+  }
   d_energies[WORKER] = energy;
+  //~ printf("\n\nbla\n\n");
 }

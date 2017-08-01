@@ -156,7 +156,8 @@ int main(int argc, char** argv)
 
 
   // initialize ONE global weight array
-  vector<cl_float> h_log_weights(N + 1, 0.0f);
+  //~ vector<cl_float> h_log_weights(N + 1, 0.0f); //gives a warning at compile time
+  vector<float> h_log_weights(N + 1, 0.0f); // no warning
   //~ cudaMalloc((void**)&d_log_weights, (N + 1) * sizeof(float));
   cl::Buffer d_log_weights_buf (
     cl_context,
@@ -168,12 +169,10 @@ int main(int argc, char** argv)
   std::cout << "clCreateBuffer status: " << memory_operation_status << "\n";
   
   
-  // texture for weights
-  //~ cudaBindTexture(NULL, t_log_weights, d_log_weights, (N + 1) * sizeof(float));
-  //~ FIXME: What is the Opencl equivalent of the previous line?
+ 
   
   // initialize ONE global histogram
-  vector<my_uint64> h_histogram((N + 1), 0);
+  vector<my_uint64> h_histogram((N + 1), 99); //FIXME: must by 0 instead of 99
   //~ my_uint64* d_histogram;
   //~ cudaMalloc((void**)&d_histogram, (N + 1) * sizeof(my_uint64));
   cl::Buffer d_histogram_buf (
@@ -184,7 +183,10 @@ int main(int argc, char** argv)
     &memory_operation_status
   );
   std::cout << "clCreateBuffer status: " << memory_operation_status << "\n";
-
+  memory_operation_status = cl_queue.enqueueWriteBuffer(d_histogram_buf, CL_TRUE, 0, (N+1) * sizeof(my_uint64), h_histogram.data(), NULL, &writeEvt);
+  std::cout << "clEnqueueWriteBuffer status: " << memory_operation_status << "\n";
+  
+  
   // timing and statistics
   vector<long double> times;
   timespec start, stop;
@@ -199,8 +201,11 @@ int main(int argc, char** argv)
   // should be related to the integrated autocorrelation time
   double z = 2.25;
   
+    
   // main iteration loop
-  for (size_t k=0; k < MAX_ITER; k++) {
+  cl::Event readEvt;
+  for (cl_uint k=0; k < MAX_ITER; k++) {
+    cout << "max_iter: " << MAX_ITER << " k: " << k << "\n";
     // start timer
     //~ cudaDeviceSynchronize();
     clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
@@ -229,6 +234,24 @@ int main(int argc, char** argv)
     // local iteration on each thread, writing to global histogram
     
     //FIXME: //~ mucaIteration<<<NUM_WORKERS / WORKERS_PER_BLOCK, WORKERS_PER_BLOCK>>>(d_lattice, d_histogram, d_energies, k, seed, NUPDATES_THERM, NUPDATES);
+    
+    cl_kernel_muca_iteration.setArg(0, d_lattice_buf);
+    cl_kernel_muca_iteration.setArg(1, d_histogram_buf);
+    cl_kernel_muca_iteration.setArg(2, d_energies_buf);
+    cl_kernel_muca_iteration.setArg(3, d_log_weights_buf);
+    cl_kernel_muca_iteration.setArg(4, &k);
+    cl_kernel_muca_iteration.setArg(5, &seed);
+    cl_kernel_muca_iteration.setArg(6, &NUPDATES_THERM);
+    cl_kernel_muca_iteration.setArg(7, &NUPDATES);
+    cl_kernel_muca_iteration.setArg(8, &L);
+    cl_kernel_muca_iteration.setArg(9, &N);
+    cl_kernel_muca_iteration.setArg(10, &NUM_WORKERS);
+    
+    //FIXME: Machen diese Parameter Sinn?
+    //~ cl_queue.enqueueNDRangeKernel(cl_kernel_muca_iteration, cl::NDRange(0), cl::NDRange(NUM_WORKERS / WORKERS_PER_BLOCK), cl::NDRange(WORKERS_PER_BLOCK));
+    cl_queue.enqueueNDRangeKernel(cl_kernel_muca_iteration, 1, cl::NDRange(1), cl::NDRange(1));
+
+    cout << "iteration: " << k << "\n";
     //~ cudaError_t err = cudaGetLastError();
     //~ if (err != cudaSuccess) {
       //~ cout << "Error: " << cudaGetErrorString(err) << " in " << __FILE__ << __LINE__ << endl;
@@ -237,7 +260,16 @@ int main(int argc, char** argv)
 
     // copy global histogram back to CPU
     //~ cudaMemcpy(h_histogram.data(), d_histogram, (N + 1) * sizeof(my_uint64), cudaMemcpyDeviceToHost);
-
+    
+    //~ memory_operation_status = cl_queue.enqueueReadBuffer(d_histogram_buf, CL_TRUE, 0, ( N + 1 ) * sizeof(my_uint64), h_histogram.data(), NULL, &readEvt);
+    memory_operation_status = cl_queue.enqueueReadBuffer(d_histogram_buf, CL_TRUE, 0, ( N + 1 ) * sizeof(my_uint64), h_histogram.data());
+    
+    cout << "readstatus: " << memory_operation_status << "\n";
+    
+    for (uint hc = 0 ; hc < N+1; hc++) {
+      std::cout << "hc: " << hc << ", hist[" << hc << "]: " << h_histogram.at(hc) << "\n";
+    }
+    
     // stop timer
     //~ cudaDeviceSynchronize();
     clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &stop);
@@ -260,12 +292,18 @@ int main(int argc, char** argv)
     getHistogramRange(h_histogram, start, end);
     unsigned width_new = end-start;
     if (width_new > width) width=width_new;
-
     // update logarithmic weights with basic scheme if not converged
     updateWeights(h_log_weights, h_histogram);
   }
   iterfile.close();
-
+  ofstream sout;
+  sout.open("stats.dat");
+  writeStatistics(times, sout);
+  sout << "total number of thermalization steps/Worker : " << TOTAL_THERM << "\n";
+  sout << "total number of iteration updates   /Worker : " << TOTAL_UPDATES << "\n";
+  sout << "total number of all updates         /Worker : " << TOTAL_THERM+TOTAL_UPDATES << "\n";
+  sout.close();
+  
 
 
 //free memory section
