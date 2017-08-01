@@ -1,7 +1,8 @@
 # Makefile for compilation of gcc and cuda version of pmuca ising2D
 
 # please select your mpi compiler
-MPICC=mpic++
+#MPICC=mpic++
+MPICC=/usr/lib64/openmpi/bin/mpic++
 CPU_FLAGS=-pedantic -Wall -Wextra -O3 -std=c++0x -I./Random123/include/
 
 # please set this to your cuda path
