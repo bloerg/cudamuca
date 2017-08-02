@@ -13,7 +13,6 @@
 // Random Number Generator
 #include "philox.h"
 #include "u01fixedpt.h"
-//#include "uniform.h"
 
 
 // from ising2D_io.hpp
@@ -117,15 +116,13 @@ __kernel void mucaIteration(
   //~ RNG::ctr_type r1, r2; 
  
   // reset global histogram
-  //~ for (size_t i = 0; i < ((d_N + 1) / d_NUM_WORKERS) + 1; i++) {
-    //~ if (i*d_NUM_WORKERS + WORKER < d_N + 1) {
-      //~ d_histogram[i * d_NUM_WORKERS + WORKER] = 0;
-    //~ }
-  //~ }
-  
-  for (size_t i = 0; i< d_N+1 ; i++ ) {
-   d_histogram[i] = 0; 
+  for (size_t i = 0; i < ((d_N + 1) / d_NUM_WORKERS) + 1; i++) {
+    if (i*d_NUM_WORKERS + WORKER < d_N + 1) {
+      d_histogram[i * d_NUM_WORKERS + WORKER] = 0;
+    }
   }
+  
+
   
   //~ __syncthreads();
   //FIXME: What is the equivalent in Opencl?
@@ -161,9 +158,5 @@ __kernel void mucaIteration(
     // add to global histogram
     d_histogram[EBIN(energy, &d_N)] += 1;
   }
-  for (uint hc=0; hc<10; hc++) {
-    d_histogram[hc] = 123;
-  }
   d_energies[WORKER] = energy;
-  //~ printf("\n\nbla\n\n");
 }
