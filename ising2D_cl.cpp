@@ -20,13 +20,13 @@ typedef r123::Philox4x32_R<7> RNG;
 
 using namespace std;
 
+
 int main(int argc, char** argv) 
 {
   parseArgs(argc, argv);
   if (NUM_WORKERS % WORKERS_PER_BLOCK != 0) {
     cerr << "ERROR: NUM_WORKERS must be multiple of " << WORKERS_PER_BLOCK << endl;
   }
-
 
   // select device
   vector<cl::Platform> all_platforms;
@@ -94,14 +94,21 @@ int main(int argc, char** argv)
   cl::Kernel cl_kernel_compute_energies(cl_program_ising, "computeEnergies");
   cl::Kernel cl_kernel_muca_iteration(cl_program_ising, "mucaIteration");
 
+  int memory_operation_status; //for debugging
+  int kernel_run_result; //for debugging
 
-
-  //~ cout << "N: "<< N << " L: " << L << " NUM_WORKERS: " << NUM_WORKERS << "\n"; //debug
-  
-  
   // initialize NUM_WORKERS (LxL) lattices
   RNG rng;
   vector<cl_char> h_lattice(NUM_WORKERS * N);
+  
+  cl::Buffer d_lattice_buf (
+    cl_context,
+    CL_MEM_READ_WRITE,
+    NUM_WORKERS * N * sizeof(cl_char),
+    NULL,
+    &memory_operation_status
+  );
+  
   for (unsigned worker=0; worker < NUM_WORKERS; worker++) {
     RNG::key_type k = {{worker, 0xdecafbad}};
     RNG::ctr_type c = {{0, seed, 0xBADCAB1E, 0xBADC0DED}};
@@ -115,24 +122,12 @@ int main(int argc, char** argv)
     }
   }
  
-  int memory_operation_status;
-  
-  cl::Buffer d_lattice_buf (
-    cl_context,
-    CL_MEM_READ_WRITE,
-    NUM_WORKERS * N * sizeof(cl_char),
-    NULL,
-    &memory_operation_status
-  );
   cout << "DEBUG: return value of create buffer d_lattice_buf: " << memory_operation_status << "\n";
   memory_operation_status = cl_queue.enqueueWriteBuffer(d_lattice_buf, CL_TRUE, 0, NUM_WORKERS * N * sizeof(cl_char), &h_lattice[0]);
   cout << "DEBUG: return value of writing d_lattice_buf to device" << memory_operation_status << "\n";
 
 
   // initialize all energies
-  //~ int* d_energies;
-  //~ cudaMalloc((void**)&d_energies, NUM_WORKERS * sizeof(int));
-
   cl::Buffer d_energies_buf (
     cl_context,
     CL_MEM_READ_WRITE,
@@ -148,14 +143,18 @@ int main(int argc, char** argv)
   cl_kernel_compute_energies.setArg(3, N);
   cl_kernel_compute_energies.setArg(4, NUM_WORKERS);
 
-  //FIXME: Machen diese Parameter Sinn?
-  int result = cl_queue.enqueueNDRangeKernel(cl_kernel_compute_energies, cl::NDRange(0), cl::NDRange(NUM_WORKERS), cl::NDRange(WORKERS_PER_BLOCK));
-  cout << "DEBUG: return value of cl_kernel_compute_energies start: " << result << "\n";
+  kernel_run_result = cl_queue.enqueueNDRangeKernel(
+    cl_kernel_compute_energies, 
+    cl::NDRange(0), 
+    cl::NDRange(NUM_WORKERS), 
+    cl::NDRange(WORKERS_PER_BLOCK)
+  );
+  cout << "DEBUG: return value of cl_kernel_compute_energies start: " << kernel_run_result << "\n";
 
 
   // initialize ONE global weight array
   //~ vector<cl_float> h_log_weights(N + 1, 0.0f); //gives a warning at compile time
-  vector<float> h_log_weights(N + 1, 0.0f); // no warning
+  vector<float> h_log_weights(N + 1, 0.0f); // no warning, but cl_float would be better
 
   cl::Buffer d_log_weights_buf (
     cl_context,
@@ -164,8 +163,11 @@ int main(int argc, char** argv)
     NULL,
     &memory_operation_status
   );
-  std::cout << "clCreateBuffer status: " << memory_operation_status << "\n";
+  std::cout << "DEBUG: return value of create buffer d_log_weights: " << memory_operation_status << "\n";
  
+  //~ FIXME: I there a way to do the following in Opencl?
+   //~ cudaBindTexture(NULL, t_log_weights, d_log_weights, (N + 1) * sizeof(float));
+
   
   // initialize ONE global histogram
   vector<my_uint64> h_histogram((N + 1), 0); 
@@ -197,10 +199,10 @@ int main(int argc, char** argv)
   
     
   // main iteration loop
-  cl::Event readEvt;
   for (cl_uint k=0; k < MAX_ITER; k++) {
+    cout << "DEBUG: Starting iteration " << k << "\n";
     // start timer
-    //~ cudaDeviceSynchronize();
+    //~ cudaDeviceSynchronize(); //This should be the case after the last kernel run and buffer read.
     clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
 
     // copy global weights to GPU
@@ -236,28 +238,14 @@ int main(int argc, char** argv)
     cl_kernel_muca_iteration.setArg(9, N);
     cl_kernel_muca_iteration.setArg(10, NUM_WORKERS);
     
-    //FIXME: Machen diese Parameter Sinn?
-    int result = cl_queue.enqueueNDRangeKernel(cl_kernel_muca_iteration, cl::NDRange(0), cl::NDRange(NUM_WORKERS), cl::NDRange(WORKERS_PER_BLOCK));
-    cout << "Result of cl_kernel_muca_iteration start: " << result << "\n";
+    kernel_run_result = cl_queue.enqueueNDRangeKernel(cl_kernel_muca_iteration, cl::NDRange(0), cl::NDRange(NUM_WORKERS), cl::NDRange(WORKERS_PER_BLOCK));
+    cout << "Result of cl_kernel_muca_iteration start: " << kernel_run_result << "\n";
 
-
-    cout << "iteration: " << k << "\n";
-    //~ cudaError_t err = cudaGetLastError();
-    //~ if (err != cudaSuccess) {
-      //~ cout << "Error: " << cudaGetErrorString(err) << " in " << __FILE__ << __LINE__ << endl;
-      //~ exit(err);
-    //~ }
 
     // copy global histogram back to CPU
-    //~ cudaMemcpy(h_histogram.data(), d_histogram, (N + 1) * sizeof(my_uint64), cudaMemcpyDeviceToHost);
-    
     memory_operation_status = cl_queue.enqueueReadBuffer(d_histogram_buf, CL_TRUE, 0, ( N + 1 ) * sizeof(my_uint64), &h_histogram[0]);
-    
-    cout << "readstatus: " << memory_operation_status << "\n";
-    
-    //~ for (uint hc = 0 ; hc < N+1; hc++) {
-      //~ std::cout << "hc: " << hc << ", hist[" << hc << "]: " << h_histogram.at(hc) << "\n";
-    //~ }
+    cout << "DEBUG: return value of reading d_histogram_buf from device: " << memory_operation_status << "\n";
+
     
     // stop timer
     //~ cudaDeviceSynchronize();
@@ -292,6 +280,77 @@ int main(int argc, char** argv)
   sout << "total number of iteration updates   /Worker : " << TOTAL_UPDATES << "\n";
   sout << "total number of all updates         /Worker : " << TOTAL_THERM+TOTAL_UPDATES << "\n";
   sout.close();
+ 
+  if (production) {
+    std::cout << "start production run ..." << std::endl;
+    // copy global weights to GPU
+    memory_operation_status = cl_queue.enqueueWriteBuffer(d_log_weights_buf, CL_TRUE, 0, (N+1) * sizeof(cl_float), &h_log_weights[0]);
+    cout << "DEBUG: return value of writing d_log_weights_buf to device: " << memory_operation_status << "\n";
+
+    // thermalization
+    NUPDATES_THERM = pow(N,z);
+    
+    cl_kernel_muca_iteration.setArg(0, d_lattice_buf);
+    cl_kernel_muca_iteration.setArg(1, d_histogram_buf);
+    cl_kernel_muca_iteration.setArg(2, d_energies_buf);
+    cl_kernel_muca_iteration.setArg(3, d_log_weights_buf);
+    cl_kernel_muca_iteration.setArg(4, 0);
+    cl_kernel_muca_iteration.setArg(5, seed+1000);
+    cl_kernel_muca_iteration.setArg(6, NUPDATES_THERM);
+    cl_kernel_muca_iteration.setArg(7, 0);
+    cl_kernel_muca_iteration.setArg(8, L);
+    cl_kernel_muca_iteration.setArg(9, N);
+    cl_kernel_muca_iteration.setArg(10, NUM_WORKERS);
+    
+    kernel_run_result = cl_queue.enqueueNDRangeKernel(cl_kernel_muca_iteration, cl::NDRange(0), cl::NDRange(NUM_WORKERS), cl::NDRange(WORKERS_PER_BLOCK));
+    cout << "DEBUG: Result of cl_kernel_muca_iteration start: " << kernel_run_result << "\n";
+
+    // set jackknife  
+    size_t JACKS = 100;
+    NUPDATES = NUPDATES_PRODUCTION/JACKS;
+    // loop over Jackknife bins
+    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
+    for (size_t k = 0; k < JACKS; k++) {
+      //~ cudaDeviceSynchronize();
+      // local production on each thread, writing to global histogram
+
+      cl_kernel_muca_iteration.setArg(0, d_lattice_buf);
+      cl_kernel_muca_iteration.setArg(1, d_histogram_buf);
+      cl_kernel_muca_iteration.setArg(2, d_energies_buf);
+      cl_kernel_muca_iteration.setArg(3, d_log_weights_buf);
+      cl_kernel_muca_iteration.setArg(4, k);
+      cl_kernel_muca_iteration.setArg(5, seed+2000);
+      cl_kernel_muca_iteration.setArg(6, 0);
+      cl_kernel_muca_iteration.setArg(7, NUPDATES);
+      cl_kernel_muca_iteration.setArg(8, L);
+      cl_kernel_muca_iteration.setArg(9, N);
+      cl_kernel_muca_iteration.setArg(10, NUM_WORKERS);
+      
+      kernel_run_result = cl_queue.enqueueNDRangeKernel(cl_kernel_muca_iteration, cl::NDRange(0), cl::NDRange(NUM_WORKERS), cl::NDRange(WORKERS_PER_BLOCK));
+      cout << "DEBUG: Result of cl_kernel_muca_iteration start: " << kernel_run_result << "\n";
+      
+
+      // copy global histogram back to CPU
+      memory_operation_status = cl_queue.enqueueReadBuffer(d_histogram_buf, CL_TRUE, 0, ( N + 1 ) * sizeof(my_uint64), &h_histogram[0]);
+      cout << "DEBUG: return value of reading d_histogram_buf from device: " << memory_operation_status << "\n";
+
+      std::stringstream filename;
+      filename << "production" << std::setw(3) << std::setfill('0') << k << ".dat";
+      iterfile.open(filename.str().c_str());
+      writeHistograms(h_log_weights, h_histogram, iterfile);
+      iterfile.close();
+    }
+    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &stop);
+    std::cout << "production run updates  JACK: " << NUPDATES     << "*WORKER \n";
+    std::cout << "production run updates total: " << NUPDATES*100 << "*WORKER \n";
+    std::cout << "production run time total   : " << (stop.tv_sec - start.tv_sec) + (stop.tv_nsec - start.tv_nsec)*1e-9 << "s\n"; 
+    sout.open("stats.dat", std::fstream::out | std::fstream::app);
+    sout << "production run updates  JACK: " << NUPDATES     << "*WORKER \n";
+    sout << "production run updates total: " << NUPDATES*100 << "*WORKER \n";
+    sout << "production run time total   : " << (stop.tv_sec - start.tv_sec) + (stop.tv_nsec - start.tv_nsec)*1e-9 << "s\n"; 
+    sout.close();
+  }
+ 
  
 
 return 0;
