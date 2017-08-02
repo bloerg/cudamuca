@@ -1,7 +1,4 @@
 
-//~ #pragma OPENCL EXTENSION cl_intel_printf : enable
-
-
 //#pragma OPENCL EXTENSION cl_khr_fp64 : enable
 
 // 256 threads per block ensures the possibility of full occupancy
@@ -157,6 +154,7 @@ __kernel void mucaIteration(
     mucaUpdate(u01fixedpt_closed_closed_32_24(r1.v[i%4]), &energy, d_lattice, d_log_weights, idx, &d_L, &d_N, &d_NUM_WORKERS);
     // add to global histogram
     d_histogram[EBIN(energy, &d_N)] += 1;
+    //~ atomic_add(d_histogram + EBIN(energy, &d_N), 1); //Problem: this works only with 32 bit types in opencl
   }
   d_energies[WORKER] = energy;
 }
