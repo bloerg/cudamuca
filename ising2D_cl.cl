@@ -88,10 +88,10 @@ __kernel void mucaIteration(
   __global ulong* d_histogram, 
   __global int* d_energies, 
   __global float* d_log_weights,
-  __private ulong iteration, 
+  __private uint iteration, 
   __private uint seed, 
-  __private my_uint64 d_NUPDATES_THERM, 
-  __private my_uint64 d_NUPDATES,
+  __private ulong d_NUPDATES_THERM, 
+  __private ulong d_NUPDATES,
   __private int d_L, 
   __private int d_N, 
   __private int d_NUM_WORKERS
@@ -143,6 +143,7 @@ __kernel void mucaIteration(
       r1 = philox4x32_R(7, c, k1); r2 = philox4x32_R(7, c, k2);
     }
     uint idx = convert_uint(u01fixedpt_closed_closed_32_24(r2.v[i%4]) * d_N); // 24_32 = float;  64_53 = double
+
     mucaUpdate(u01fixedpt_closed_closed_32_24(r1.v[i%4]), &energy, d_lattice, d_log_weights, idx, &d_L, &d_N, &d_NUM_WORKERS);
     // add to global histogram
     d_histogram[EBIN(energy, &d_N)] += 1;
