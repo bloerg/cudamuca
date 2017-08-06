@@ -88,10 +88,10 @@ __kernel void mucaIteration(
   __global ulong* d_histogram, 
   __global int* d_energies, 
   __global float* d_log_weights,
-  __private uint iteration, 
+  __private ulong iteration, 
   __private uint seed, 
-  __private ulong d_NUPDATES_THERM, 
-  __private ulong d_NUPDATES,
+  __private my_uint64 d_NUPDATES_THERM, 
+  __private my_uint64 d_NUPDATES,
   __private int d_L, 
   __private int d_N, 
   __private int d_NUM_WORKERS
@@ -105,12 +105,6 @@ __kernel void mucaIteration(
   philox4x32_key_t k2 = {{0xC001CAFE, 0xdecafbad}};
   philox4x32_ctr_t c = {{0, seed, iteration, 0xBADC0DED}};//0xBADCAB1E
   philox4x32_ctr_t r1, r2;
-
-  //~ RNG rng;
-  //~ RNG::key_type k1 = {{WORKER, 0xdecafbad}};
-  //~ RNG::key_type k2 = {{0xC001CAFE, 0xdecafbad}};
-  //~ RNG::ctr_type c = {{0, seed, iteration, 0xBADC0DED}};//0xBADCAB1E
-  //~ RNG::ctr_type r1, r2; 
  
   // reset global histogram
   for (size_t i = 0; i < ((d_N + 1) / d_NUM_WORKERS) + 1; i++) {
@@ -148,9 +142,7 @@ __kernel void mucaIteration(
       ++c.v[0];
       r1 = philox4x32_R(7, c, k1); r2 = philox4x32_R(7, c, k2);
     }
-    //~ unsigned idx = convert_uint(r123::u01fixedpt<float>(r2.v[i%4]) * d_N);
     uint idx = convert_uint(u01fixedpt_closed_closed_32_24(r2.v[i%4]) * d_N); // 24_32 = float;  64_53 = double
-    //~ mucaUpdate(r123::u01fixedpt<float>(r1.v[i%4]), &energy, d_lattice, idx, &d_NUM_WORKERS);
     mucaUpdate(u01fixedpt_closed_closed_32_24(r1.v[i%4]), &energy, d_lattice, d_log_weights, idx, &d_L, &d_N, &d_NUM_WORKERS);
     // add to global histogram
     d_histogram[EBIN(energy, &d_N)] += 1;
