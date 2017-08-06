@@ -200,7 +200,7 @@ int main(int argc, char** argv)
   
     
   // main iteration loop
-  for (cl_uint k=0; k < MAX_ITER; k++) {
+  for (cl_ulong k=0; k < MAX_ITER; k++) {
     cout << "DEBUG: Starting iteration " << k << "\n";
     // start timer
     //~ cudaDeviceSynchronize(); //This should be the case after the last kernel run and buffer read.
