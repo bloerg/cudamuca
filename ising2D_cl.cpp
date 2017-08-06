@@ -67,7 +67,7 @@ int main(int argc, char** argv)
   int totalmultiprocessors = device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
   int optimum_number_of_workers = maxresidentthreads*totalmultiprocessors;
   if (NUM_WORKERS == 0) {
-    NUM_WORKERS = optimum_number_of_workers;
+    NUM_WORKERS = optimum_number_of_workers *2;
   }
   cout << "INFO: Number of Workers: " << NUM_WORKERS << "\n";
 
