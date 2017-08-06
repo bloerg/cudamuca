@@ -90,8 +90,8 @@ __kernel void mucaIteration(
   __global float* d_log_weights,
   __private ulong iteration, 
   __private uint seed, 
-  __private my_uint64 d_NUPDATES_THERM, 
-  __private my_uint64 d_NUPDATES,
+  __private ulong d_NUPDATES_THERM, 
+  __private ulong d_NUPDATES,
   __private int d_L, 
   __private int d_N, 
   __private int d_NUM_WORKERS
