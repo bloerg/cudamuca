@@ -81,7 +81,7 @@ inline bool mucaUpdate(float rannum, int* energy, __global char* d_lattice, __gl
 __kernel void computeEnergies(__global char* d_lattice, __global int* d_energies, __private int d_L, __private int d_N, __private int d_NUM_WORKERS)
 {
   d_energies[WORKER] = calculateEnergy(d_lattice, &d_L, &d_N, &d_NUM_WORKERS);
-  barrier(CLK_GLOBAL_MEM_FENCE);
+  barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 }
 
 
@@ -115,7 +115,7 @@ __kernel void mucaIteration(
     }
   }
   
-  barrier(CLK_GLOBAL_MEM_FENCE);
+  barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 
   int energy;
   energy = d_energies[WORKER];
@@ -132,7 +132,7 @@ __kernel void mucaIteration(
     //~ mucaUpdate(r123::u01fixedpt<float>(r1.v[i%4]), &energy, d_lattice, idx, &d_L, &d_N, &d_NUM_WORKERS);
     mucaUpdate(u01fixedpt_open_open_32_24(r1.v[i%4]), &energy, d_lattice, d_log_weights, idx, &d_L, &d_N, &d_NUM_WORKERS);
   }
-  barrier(CLK_GLOBAL_MEM_FENCE);
+  barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 
 
   // estimate current propability distribution of W(E)
@@ -148,7 +148,7 @@ __kernel void mucaIteration(
     //~ atomic_add(d_histogram + EBIN(energy, &d_N), 1); //Problem: this works only with 32 bit types in opencl
     atom_add(d_histogram + EBIN(energy, &d_N), 1); //Problem: this works with 64Bit but requires support of cl_khr_int64_base_atomics pragma
   }
-  barrier(CLK_GLOBAL_MEM_FENCE);
+  barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 
   d_energies[WORKER] = energy;
 
