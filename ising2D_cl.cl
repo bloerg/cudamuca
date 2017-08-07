@@ -1,6 +1,5 @@
 
 //#pragma OPENCL EXTENSION cl_khr_fp64 : enable
-
 #pragma OPENCL EXTENSION cl_khr_int64_base_atomics : enable
 
 // 256 threads per block ensures the possibility of full occupancy
@@ -87,12 +86,8 @@ __kernel void computeEnergies(__global char* d_lattice, __global int* d_energies
 
 
 __kernel void mucaIteration(
-  __global char* d_lattice,
-#ifdef cl_khr_int64_base_atomics
+  __global char* d_lattice, 
   __global ulong* d_histogram, 
-#else
-  __global uint* d_histogram, 
-#endif
   __global int* d_energies, 
   __global float* d_log_weights,
   __private ulong iteration, 
@@ -120,7 +115,7 @@ __kernel void mucaIteration(
     }
   }
   
-  barrier(CLK_GLOBAL_MEM_FENCE);
+  barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 
   int energy;
   energy = d_energies[WORKER];
@@ -147,11 +142,11 @@ __kernel void mucaIteration(
     uint idx = convert_uint(u01fixedpt_closed_closed_32_24(r2.v[i%4]) * d_N); // 24_32 = float;  64_53 = double
     mucaUpdate(u01fixedpt_closed_closed_32_24(r1.v[i%4]), &energy, d_lattice, d_log_weights, idx, &d_L, &d_N, &d_NUM_WORKERS);
     // add to global histogram
-    atom_add(d_histogram + EBIN(energy, &d_N), 1); //Problem: this works with 64Bit but requires support of cl_khr_int64_base_atomics pragma
+    //~ d_histogram[EBIN(energy, &d_N)] += 1;
     //~ atomic_add(d_histogram + EBIN(energy, &d_N), 1); //Problem: this works only with 32 bit types in opencl
-    
+    atom_add(d_histogram + EBIN(energy, &d_N), 1); //Problem: this works with 64Bit but requires support of cl_khr_int64_base_atomics pragma
   }
-  barrier(CLK_GLOBAL_MEM_FENCE);
+  barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 
   d_energies[WORKER] = energy;
 
