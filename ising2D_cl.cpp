@@ -184,17 +184,17 @@ int main(int argc, char** argv)
 
   
   // initialize ONE global histogram
-  vector<cl_ulong> h_histogram((N + 1), 0); // Regarding the warning at compile time: https://stackoverflow.com/questions/22512235/compiling-an-aligned-struct-gives-strange-warning-in-gcc
+  vector<my_uint64> h_histogram((N + 1), 0); // Regarding the warning at compile time: https://stackoverflow.com/questions/22512235/compiling-an-aligned-struct-gives-strange-warning-in-gcc
   
   cl::Buffer d_histogram_buf (
     cl_context,
     CL_MEM_READ_WRITE,
-    ( N + 1 ) * sizeof(cl_ulong),
+    ( N + 1 ) * sizeof(my_uint64),
     NULL,
     &memory_operation_status
   );
   cout << "DEBUG: return value of create buffer d_histogram_buf:: " << memory_operation_status << "\n";
-  memory_operation_status = cl_queue.enqueueWriteBuffer(d_histogram_buf, CL_TRUE, 0, (N+1) * sizeof(cl_ulong), &h_histogram[0]);
+  memory_operation_status = cl_queue.enqueueWriteBuffer(d_histogram_buf, CL_TRUE, 0, (N+1) * sizeof(my_uint64), &h_histogram[0]);
 
   
   
@@ -258,7 +258,7 @@ int main(int argc, char** argv)
 
 
     // copy global histogram back to CPU
-    memory_operation_status = cl_queue.enqueueReadBuffer(d_histogram_buf, CL_TRUE, 0, ( N + 1 ) * sizeof(cl_ulong), &h_histogram[0]);
+    memory_operation_status = cl_queue.enqueueReadBuffer(d_histogram_buf, CL_TRUE, 0, ( N + 1 ) * sizeof(my_uint64), &h_histogram[0]);
     cout << "DEBUG: return value of reading d_histogram_buf from device: " << memory_operation_status << "\n";
 
     
@@ -346,7 +346,7 @@ int main(int argc, char** argv)
       
 
       // copy global histogram back to CPU
-      memory_operation_status = cl_queue.enqueueReadBuffer(d_histogram_buf, CL_TRUE, 0, ( N + 1 ) * sizeof(cl_ulong), &h_histogram[0]);
+      memory_operation_status = cl_queue.enqueueReadBuffer(d_histogram_buf, CL_TRUE, 0, ( N + 1 ) * sizeof(my_uint64), &h_histogram[0]);
       cout << "DEBUG: return value of reading d_histogram_buf from device: " << memory_operation_status << "\n";
 
       std::stringstream filename;
