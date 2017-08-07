@@ -58,6 +58,21 @@ int main(int argc, char** argv)
   cout << "INFO: Using device " << device.getInfo<CL_DEVICE_NAME>() << "\n";
 
 
+  //~ cl_khr_int64_base_atomics 
+  string available_extensions = device.getInfo<CL_DEVICE_EXTENSIONS>();
+  cout << "INFO: Available Extensions :" << available_extensions << "\n";
+
+  bool DEVICE_HAS_64BIT_INT;
+  if (available_extensions.find("cl_khr_int64_base_atomics") != std::string::npos) {
+    DEVICE_HAS_64BIT_INT = true;
+    cout << "DEBUG: cl_khr_int64_base_atomics is available.\n";
+  }
+  else {
+    DEVICE_HAS_64BIT_INT = false;
+    cout << "DEBUG: cl_khr_int64_base_atomics not available.\n";
+    cout << "WARNING: Computations run on 32 Bit Uint Histogram!\n";
+  }
+
   //~ // prefer cache over shared memory
   // cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
 
@@ -154,8 +169,7 @@ int main(int argc, char** argv)
 
 
   // initialize ONE global weight array
-  //~ vector<cl_float> h_log_weights(N + 1, 0.0f); //gives a warning at compile time
-  vector<float> h_log_weights(N + 1, 0.0f); // no warning, but cl_float would be better
+  vector<cl_float> h_log_weights(N + 1, 0.0f); //gives a warning at compile time
 
   cl::Buffer d_log_weights_buf (
     cl_context,
@@ -171,17 +185,18 @@ int main(int argc, char** argv)
 
   
   // initialize ONE global histogram
-  vector<my_uint64> h_histogram((N + 1), 0); 
+  vector<cl_ulong> h_histogram((N + 1), 0); // Regarding the warning at compile time: https://stackoverflow.com/questions/22512235/compiling-an-aligned-struct-gives-strange-warning-in-gcc
+  
   cl::Buffer d_histogram_buf (
     cl_context,
     CL_MEM_READ_WRITE,
-    ( N + 1 ) * sizeof(my_uint64),
+    ( N + 1 ) * sizeof(cl_ulong),
     NULL,
     &memory_operation_status
   );
   cout << "DEBUG: return value of create buffer d_histogram_buf:: " << memory_operation_status << "\n";
-  memory_operation_status = cl_queue.enqueueWriteBuffer(d_histogram_buf, CL_TRUE, 0, (N+1) * sizeof(my_uint64), &h_histogram[0]);
-  cout << "DEBUG: return value of writing d_histogram_buf to device: " << memory_operation_status << "\n";
+  memory_operation_status = cl_queue.enqueueWriteBuffer(d_histogram_buf, CL_TRUE, 0, (N+1) * sizeof(cl_ulong), &h_histogram[0]);
+
   
   
   // timing and statistics
@@ -244,7 +259,8 @@ int main(int argc, char** argv)
 
 
     // copy global histogram back to CPU
-    memory_operation_status = cl_queue.enqueueReadBuffer(d_histogram_buf, CL_TRUE, 0, ( N + 1 ) * sizeof(my_uint64), &h_histogram[0]);
+    if (DEVICE_HAS_64BIT_INT) memory_operation_status = cl_queue.enqueueReadBuffer(d_histogram_buf, CL_TRUE, 0, ( N + 1 ) * sizeof(cl_ulong), &h_histogram[0]);
+    else memory_operation_status = cl_queue.enqueueReadBuffer(d_histogram_buf, CL_TRUE, 0, ( N + 1 ) * sizeof(cl_uint), &h_histogram[0]);
     cout << "DEBUG: return value of reading d_histogram_buf from device: " << memory_operation_status << "\n";
 
     
@@ -332,7 +348,7 @@ int main(int argc, char** argv)
       
 
       // copy global histogram back to CPU
-      memory_operation_status = cl_queue.enqueueReadBuffer(d_histogram_buf, CL_TRUE, 0, ( N + 1 ) * sizeof(my_uint64), &h_histogram[0]);
+      memory_operation_status = cl_queue.enqueueReadBuffer(d_histogram_buf, CL_TRUE, 0, ( N + 1 ) * sizeof(cl_ulong), &h_histogram[0]);
       cout << "DEBUG: return value of reading d_histogram_buf from device: " << memory_operation_status << "\n";
 
       std::stringstream filename;

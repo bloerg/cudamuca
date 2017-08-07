@@ -48,6 +48,18 @@ void writeHistograms(const std::vector<float>& weights, const std::vector<my_uin
   }
 }
 
+void writeHistograms(const std::vector<float>& weights, const std::vector<cl_ulong>& histogram, std::ofstream& fout)
+{
+  for (size_t i = 0; i < histogram.size(); i++) {
+    // do not write unoccupied energy bins
+    if (i == 1 || i == histogram.size() - 2) {
+      continue;
+    }
+    fout << 4 * static_cast<int>(i) - 2 * static_cast<int>(N) << " " << std::setprecision(10) << weights.at(i) << " " << histogram.at(i) << std::endl;
+  }
+}
+
+
 // print statistics to filestream
 void writeStatistics(const std::vector<long double>& times, std::ofstream& fout)
 {
