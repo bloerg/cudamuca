@@ -1,5 +1,6 @@
 
 //#pragma OPENCL EXTENSION cl_khr_fp64 : enable
+#pragma OPENCL EXTENSION cl_khr_int64_base_atomics : enable
 
 // 256 threads per block ensures the possibility of full occupancy
 // for all compute capabilities if thread count small enough
@@ -143,6 +144,7 @@ __kernel void mucaIteration(
     // add to global histogram
     d_histogram[EBIN(energy, &d_N)] += 1;
     //~ atomic_add(d_histogram + EBIN(energy, &d_N), 1); //Problem: this works only with 32 bit types in opencl
+    atom_add(d_histogram + EBIN(energy, &d_N), 1); //Problem: this works with 64Bit but requires support of cl_khr_int64_base_atomics pragma
   }
   barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 
