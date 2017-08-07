@@ -63,7 +63,6 @@ inline bool mucaUpdate(float rannum, int* energy, __global char* d_lattice, __gl
 {
   // precalculate energy difference
   int dE = -2 * localE(idx, d_lattice, d_L, d_N, d_NUM_WORKERS);
-  barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 
   // flip with propability W(E_new)/W(E_old)
   // weights are stored in texture memory for faster random access
