@@ -2,6 +2,7 @@
 //#pragma OPENCL EXTENSION cl_khr_fp64 : enable
 
 #pragma OPENCL EXTENSION cl_khr_int64_base_atomics : enable
+
 // 256 threads per block ensures the possibility of full occupancy
 // for all compute capabilities if thread count small enough
 #define WORKERS_PER_BLOCK 256

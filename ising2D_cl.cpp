@@ -70,7 +70,6 @@ int main(int argc, char** argv)
   else {
     DEVICE_HAS_64BIT_INT = false;
     cout << "DEBUG: cl_khr_int64_base_atomics not available.\n";
-    cout << "WARNING: Computations run on 32 Bit Uint Histogram!\n";
   }
 
   //~ // prefer cache over shared memory
@@ -259,8 +258,7 @@ int main(int argc, char** argv)
 
 
     // copy global histogram back to CPU
-    if (DEVICE_HAS_64BIT_INT) memory_operation_status = cl_queue.enqueueReadBuffer(d_histogram_buf, CL_TRUE, 0, ( N + 1 ) * sizeof(cl_ulong), &h_histogram[0]);
-    else memory_operation_status = cl_queue.enqueueReadBuffer(d_histogram_buf, CL_TRUE, 0, ( N + 1 ) * sizeof(cl_uint), &h_histogram[0]);
+    memory_operation_status = cl_queue.enqueueReadBuffer(d_histogram_buf, CL_TRUE, 0, ( N + 1 ) * sizeof(cl_ulong), &h_histogram[0]);
     cout << "DEBUG: return value of reading d_histogram_buf from device: " << memory_operation_status << "\n";
 
     
