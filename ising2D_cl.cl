@@ -80,6 +80,7 @@ inline bool mucaUpdate(float rannum, int* energy, __global char* d_lattice, __gl
 __kernel void computeEnergies(__global char* d_lattice, __global int* d_energies, __private int d_L, __private int d_N, __private int d_NUM_WORKERS)
 {
   d_energies[WORKER] = calculateEnergy(d_lattice, &d_L, &d_N, &d_NUM_WORKERS);
+  barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 }
 
 
@@ -113,11 +114,6 @@ __kernel void mucaIteration(
     }
   }
   
-
-  
-  //~ __syncthreads();
-  //FIXME: What is the equivalent in Opencl?
-
   barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 
   int energy;
@@ -148,5 +144,8 @@ __kernel void mucaIteration(
     d_histogram[EBIN(energy, &d_N)] += 1;
     //~ atomic_add(d_histogram + EBIN(energy, &d_N), 1); //Problem: this works only with 32 bit types in opencl
   }
+  barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
+
   d_energies[WORKER] = energy;
+
 }
