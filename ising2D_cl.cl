@@ -135,12 +135,6 @@ __kernel void mucaIteration(
   barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 
 
-  __local ulong l_histogram_bin_sum[1]; // use one for every work item for acceleration
-  if(get_local_id(0)==0){
-      l_histogram_bin_sum[0]=0;
-  }
-  barrier(CLK_LOCAL_MEM_FENCE);
-  
   // estimate current propability distribution of W(E)
   for (ulong i = 0; i < d_NUPDATES; i++) {
     if(i%4 == 0) {
@@ -150,14 +144,11 @@ __kernel void mucaIteration(
     uint idx = convert_uint(u01fixedpt_open_open_32_24(r2.v[i%4]) * d_N); // 24_32 = float;  64_53 = double
     mucaUpdate(u01fixedpt_open_open_32_24(r1.v[i%4]), &energy, d_lattice, d_log_weights, idx, &d_L, &d_N, &d_NUM_WORKERS);
     // add to global histogram
-    //~ d_histogram[EBIN(energy, &d_N)] += 1; //incorrect results
+    //~ d_histogram[EBIN(energy, &d_N)] += 1; // incorrect results
     //~ atomic_add(d_histogram + EBIN(energy, &d_N), 1); //Problem: this works only with 32 bit types in opencl
-    atom_add(&l_histogram_bin_sum[0], 1);
+    atom_add(d_histogram + EBIN(energy, &d_N), 1); //Problem: this works with 64Bit but requires support of cl_khr_int64_base_atomics pragma
   }
-  barrier(CLK_LOCAL_MEM_FENCE);
-  if(get_local_id(0)==(get_local_size(0)-1)){
-    atom_add(d_histogram + EBIN(energy, &d_N), l_histogram_bin_sum[0]); //Problem: this works with 64Bit but requires support of cl_khr_int64_base_atomics pragma
-  }
+  barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 
   d_energies[WORKER] = energy;
 
