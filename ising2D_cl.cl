@@ -155,7 +155,9 @@ __kernel void mucaIteration(
     atom_add(&l_histogram_bin_sum[0], 1);
   }
   barrier(CLK_LOCAL_MEM_FENCE);
-  atom_add(d_histogram + EBIN(energy, &d_N), l_histogram_bin_sum[0]); //Problem: this works with 64Bit but requires support of cl_khr_int64_base_atomics pragma
+  if(get_local_id(0)==(get_local_size(0)-1)){
+    atom_add(d_histogram + EBIN(energy, &d_N), l_histogram_bin_sum[0]); //Problem: this works with 64Bit but requires support of cl_khr_int64_base_atomics pragma
+  }
 
   d_energies[WORKER] = energy;
 
