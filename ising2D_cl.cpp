@@ -154,8 +154,7 @@ int main(int argc, char** argv)
 
 
   // initialize ONE global weight array
-  //~ vector<cl_float> h_log_weights(N + 1, 0.0f); //gives a warning at compile time
-  vector<float> h_log_weights(N + 1, 0.0f); // no warning, but cl_float would be better
+  vector<cl_float> h_log_weights(N + 1, 0.0f); 
 
   cl::Buffer d_log_weights_buf (
     cl_context,
