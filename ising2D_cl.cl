@@ -87,7 +87,7 @@ __kernel void computeEnergies(__global char* d_lattice, __global int* d_energies
 
 __kernel void mucaIteration(
   __global char* d_lattice, 
-  __global my_uint64* d_histogram, 
+  __global ulong* d_histogram, 
   __global int* d_energies, 
   __global float* d_log_weights,
   __private ulong iteration, 
