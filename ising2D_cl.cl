@@ -70,7 +70,9 @@ inline bool mucaUpdate(double rannum, int* energy, __global char* d_lattice, __g
 
   //FIXME: tex1Dfetch equivalent in OPENCL?
   //~ if (rannum < expf(tex1Dfetch(t_log_weights, EBIN(*energy + dE)) - tex1Dfetch(t_log_weights, EBIN(*energy)))) {
-  if (rannum < exp(d_log_weights[EBIN(*energy + dE, d_N)] - d_log_weights[EBIN(*energy, d_N)] ) ) { //FIXME
+  double exponent = convert_double(d_log_weights[EBIN(*energy + dE, d_N)] - d_log_weights[EBIN(*energy, d_N)]);
+  //~ if (rannum < exp(d_log_weights[EBIN(*energy + dE, d_N)] - d_log_weights[EBIN(*energy, d_N)] ) ) { //FIXME
+  if (rannum < exponent ) { //FIXME
     d_lattice[idx * *d_NUM_WORKERS + WORKER] = -d_lattice[idx * *d_NUM_WORKERS + WORKER];
     *energy += dE;
     return true;
