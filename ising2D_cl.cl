@@ -1,6 +1,7 @@
 
-//#pragma OPENCL EXTENSION cl_khr_fp64 : enable
+#pragma OPENCL EXTENSION cl_khr_fp64 : enable
 #pragma OPENCL EXTENSION cl_khr_int64_base_atomics : enable
+
 
 // 256 threads per block ensures the possibility of full occupancy
 // for all compute capabilities if thread count small enough
@@ -59,7 +60,7 @@ int calculateEnergy(__global char* lattice, int* d_L, int* d_N, int* d_NUM_WORKE
 
 
 // multicanonical Markov chain update (single spin flip)
-inline bool mucaUpdate(float rannum, int* energy, __global char* d_lattice, __global float* d_log_weights, uint idx, int* d_L, int* d_N, int* d_NUM_WORKERS)
+inline bool mucaUpdate(double rannum, int* energy, __global char* d_lattice, __global float* d_log_weights, uint idx, int* d_L, int* d_N, int* d_NUM_WORKERS)
 {
   // precalculate energy difference
   int dE = -2 * localE(idx, d_lattice, d_L, d_N, d_NUM_WORKERS);
