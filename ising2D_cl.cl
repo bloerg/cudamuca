@@ -60,7 +60,7 @@ int calculateEnergy(__global char* lattice, int* d_L, int* d_N, int* d_NUM_WORKE
 
 
 // multicanonical Markov chain update (single spin flip)
-inline bool mucaUpdate(double rannum, int* energy, __global char* d_lattice, __global float* d_log_weights, uint idx, int* d_L, int* d_N, int* d_NUM_WORKERS)
+inline bool mucaUpdate(float rannum, int* energy, __global char* d_lattice, __global float* d_log_weights, uint idx, int* d_L, int* d_N, int* d_NUM_WORKERS)
 {
   // precalculate energy difference
   int dE = -2 * localE(idx, d_lattice, d_L, d_N, d_NUM_WORKERS);
@@ -70,9 +70,7 @@ inline bool mucaUpdate(double rannum, int* energy, __global char* d_lattice, __g
 
   //FIXME: tex1Dfetch equivalent in OPENCL?
   //~ if (rannum < expf(tex1Dfetch(t_log_weights, EBIN(*energy + dE)) - tex1Dfetch(t_log_weights, EBIN(*energy)))) {
-  double exponent = convert_double(d_log_weights[EBIN(*energy + dE, d_N)] - d_log_weights[EBIN(*energy, d_N)]);
-  //~ if (rannum < exp(d_log_weights[EBIN(*energy + dE, d_N)] - d_log_weights[EBIN(*energy, d_N)] ) ) { //FIXME
-  if (rannum < exponent ) { //FIXME
+  if (rannum < exp(d_log_weights[EBIN(*energy + dE, d_N)] - d_log_weights[EBIN(*energy, d_N)] ) ) { //FIXME
     d_lattice[idx * *d_NUM_WORKERS + WORKER] = -d_lattice[idx * *d_NUM_WORKERS + WORKER];
     *energy += dE;
     return true;
